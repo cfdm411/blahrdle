@@ -1,0 +1,13 @@
+#!/bin/sh
+echo "Running tests before commit…"
+
+npx vitest run
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Tests failed. Commit blocked."
+  echo "   Fix the failing tests and try again."
+  exit 1
+fi
+
+echo "✅ All tests passed."

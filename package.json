@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "prepare": "husky"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.3",
@@ -28,6 +29,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "vite": "^8.0.10",
     "vitest": "^4.1.5"
