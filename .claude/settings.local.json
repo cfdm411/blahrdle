@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(cp webfetch-1777766445672-vp2wqo.bin design.gz)",
+      "Bash(gunzip -f design.gz)",
+      "Read(//private/tmp/**)",
+      "Bash(mkdir lordle_design)",
+      "Bash(tar -xf /Users/cfdm411/.claude/projects/-Users-cfdm411-Documents-lordle/b60d3c0d-ca7a-4971-a9db-c6899ffb4fb1/tool-results/design -C lordle_design)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(curl -s http://localhost:5174/)",
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174/)",
+      "Read(//Users/cfdm411/Downloads/**)",
+      "Bash(npx vercel *)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Read(//tmp/**)",
+      "Bash(kill %1)"
+    ]
+  }
+}
