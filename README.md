@@ -2,7 +2,12 @@
 
 A Wordle clone with a 10-minute countdown timer, a scoring system, and a real-time match system to challenge other players.
 
-**Live:** [lordle-gray.vercel.app](https://lordle-gray.vercel.app)
+**Repo:** [github.com/cfdm411/lorde](https://github.com/cfdm411/lorde)
+
+| Environment | URL |
+|---|---|
+| Production | [lordle-gray.vercel.app](https://lordle-gray.vercel.app) |
+| Staging | [lordle-git-develop-cfdm411-7437s-projects.vercel.app](https://lordle-git-develop-cfdm411-7437s-projects.vercel.app) |
 
 ---
 
@@ -34,8 +39,20 @@ Lordle is a 5-letter word guessing game. You have up to 6 guesses and 10 minutes
 - **Match system** — challenge registered players to head-to-head duels on the same word
 - **Settings panel** — dark/light mode, tile size, accent colours (persisted to `localStorage`)
 - **Tests** — Vitest suite covering game logic, scoring, words, and timer
+- **Pre-commit hook** — husky runs `vitest run` automatically; failing tests block the commit
 
 ---
+
+## Git workflow
+
+```
+develop  →  staging (auto-deployed by Vercel on push)
+main     →  production (auto-deployed by Vercel on push)
+```
+
+- Do all work on `develop`
+- Merge to `main` when ready to ship to production
+- A pre-commit hook (husky) runs `npx vitest run` before every commit — the commit is blocked if any test fails
 
 ## Running locally
 

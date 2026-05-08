@@ -12,6 +12,33 @@ npm test             # Vitest (run once)
 npx vercel --prod    # deploy (Vercel project already linked)
 ```
 
+## Git workflow
+
+```
+develop  →  staging  (lordle-git-develop-cfdm411-7437s-projects.vercel.app)
+main     →  production  (lordle-gray.vercel.app)
+```
+
+- **Always commit to `develop` first.** Merge to `main` only to ship to production.
+- Repo: https://github.com/cfdm411/lorde
+- Git identity must be `cfdm411 <cfdm411@gmail.com>` — Vercel ties deploys to this account and will block pushes from other committer emails.
+
+```bash
+git config user.email "cfdm411@gmail.com"
+git config user.name "cfdm411"
+```
+
+## Pre-commit hook (husky)
+
+`npx vitest run` fires automatically before every commit via `.husky/pre-commit`. If any test fails the commit is blocked with:
+
+```
+❌ Tests failed. Commit blocked.
+   Fix the failing tests and try again.
+```
+
+Never skip the hook with `--no-verify` unless you have a specific reason. The hook is committed to the repo and installed via the `prepare` script in `package.json`.
+
 ## Architecture
 
 | File | Owns |
@@ -75,7 +102,7 @@ Clicking "Jugar como invitado" in `AuthScreen` sets `isGuest = true` in `App`. T
 - Skips the HomeScreen entirely — mounts `Game` directly
 - Passes `isGuest` and `onGoLogin` to `Game`
 - Skips all Supabase writes (save effect guards on `!auth.user`, which is null for guests)
-- Passes `trackLocalScores: false` to `useGameState` so wins/losses don't update `lordle_scores`... wait, actually guests DO get `trackLocalScores` from the default (true). Correction: guests skip Supabase but do update localStorage counters. Only match mode sets `trackLocalScores: false`.
+- Skips Supabase writes but does update `lordle_scores` in localStorage (guests keep local Wins/Lost/Streak counters). Only match mode sets `trackLocalScores: false`.
 - Shows "Guest" in the game header instead of a username
 - Hides the "Ir al inicio" button in the game-over CTA (guests have no home screen)
 - Shows a subtle banner: "Las estadísticas no se guardan en modo invitado" + "Registrarse →" link that calls `onGoLogin` (sets `isGuest = false`, unmounting Game and returning to AuthScreen)
