@@ -30,20 +30,31 @@ export function useAuth() {
     return () => { cancelled = true }
   }, [user])
 
-  const signIn = useCallback(async (username, password) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email: fakeEmail(username), password,
-    })
+  const signIn = useCallback(async (usernameOrEmail, password) => {
+    let authEmail
+    if (usernameOrEmail.includes('@')) {
+      const { data, error: lookupErr } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('email', usernameOrEmail.trim().toLowerCase())
+        .maybeSingle()
+      if (lookupErr) return { error: lookupErr }
+      if (!data) return { error: { message: 'No account found for that email.' } }
+      authEmail = fakeEmail(data.username)
+    } else {
+      authEmail = fakeEmail(usernameOrEmail.trim())
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password })
     return { error }
   }, [])
 
-  const signUp = useCallback(async (username, password) => {
-    const email = fakeEmail(username)
-    const { data, error } = await supabase.auth.signUp({ email, password })
+  const signUp = useCallback(async (email, username, password) => {
+    const authEmail = fakeEmail(username)
+    const { data, error } = await supabase.auth.signUp({ email: authEmail, password })
     if (error) return { error }
     if (data.user) {
       const { error: pErr } = await supabase.from('profiles').insert({
-        id: data.user.id, username, email,
+        id: data.user.id, username, email: email.trim().toLowerCase(),
       })
       if (pErr) return { error: pErr }
     }
