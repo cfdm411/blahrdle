@@ -13,9 +13,15 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
   const submit = async (e) => {
     e.preventDefault()
     if (busy) return
-    if (mode === 'register' && password !== confirm) {
-      setError('Passwords do not match')
-      return
+    if (mode === 'register') {
+      if (username.includes('@')) {
+        setError('Username cannot contain @')
+        return
+      }
+      if (password !== confirm) {
+        setError('Passwords do not match')
+        return
+      }
     }
     setError(null); setBusy(true)
     const { error } = mode === 'login'

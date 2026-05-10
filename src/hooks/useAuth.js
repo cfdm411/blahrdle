@@ -49,14 +49,24 @@ export function useAuth() {
   }, [])
 
   const signUp = useCallback(async (email, username, password) => {
-    const authEmail = fakeEmail(username)
+    const cleanUsername = username.trim()
+    const cleanEmail = email.trim().toLowerCase()
+    if (cleanUsername.includes('@')) {
+      return { error: { message: 'Username cannot contain @' } }
+    }
+    const authEmail = fakeEmail(cleanUsername)
     const { data, error } = await supabase.auth.signUp({ email: authEmail, password })
     if (error) return { error }
     if (data.user) {
       const { error: pErr } = await supabase.from('profiles').insert({
-        id: data.user.id, username, email: email.trim().toLowerCase(),
+        id: data.user.id, username: cleanUsername, email: cleanEmail,
       })
-      if (pErr) return { error: pErr }
+      if (pErr) {
+        if (pErr.code === '23505' && /email/i.test(pErr.message || '')) {
+          return { error: { message: 'An account with this email already exists' } }
+        }
+        return { error: pErr }
+      }
     }
     return { error: null }
   }, [])
