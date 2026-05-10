@@ -45,7 +45,7 @@ Never skip the hook with `--no-verify` unless you have a specific reason. The ho
 |---|---|
 | `src/App.jsx` | Auth gate, screen routing (`'home'` / `'match'` / `'game'`), presentational `Game` component. **No game logic here.** |
 | `src/hooks/useGameState.js` | All game state, scoring, timer, keyboard handler. Single source of truth for gameplay. Accepts `{ initialTarget, trackLocalScores }` options. |
-| `src/hooks/useAuth.js` | Supabase session, profile fetch, `signIn` / `signUp` / `signOut`. |
+| `src/hooks/useAuth.js` | Supabase session, profile fetch, `signIn(usernameOrEmail, password)` / `signUp(email, username, password)` / `signOut`. Real email is stored in `profiles.email`; the Supabase auth identity stays as the synthesized `username@lordle.local`. |
 | `src/components/AuthScreen.jsx` | Login/register form + "Jugar como invitado" guest link. |
 | `src/components/HomeScreen.jsx` | Post-login dashboard: stats cards, Nueva Partida button, Match button with pending-challenge badge. |
 | `src/components/MatchScreen.jsx` | Match lobby: player search, challenge/respond flow, sectioned match list, results. |
@@ -83,6 +83,13 @@ The keyframe uses CSS variables (`--pre-bg/border/color`, `--post-bg/border/colo
 - **+10** per green tile (correct letter, correct position), counted *after* the row finishes its reveal animation. The score in the UI updates row-by-row in sync with the flip — see `greenScore` `useMemo` in `useGameState.js`, which gates on `revealingRow`.
 - **Solve bonus** (only on win) indexed by `guesses.length`: `[_, 100, 80, 60, 40, 20, 10]`.
 - Both constants and compute functions live in `src/lib/gameLogic.js` and are unit-tested.
+
+## Auth
+
+- **Registration** takes a real email + username + password (+ confirm). Username may not contain `@` (would collide with the email-detection branch in `signIn`).
+- **Login** accepts either the username or the real email. If the input contains `@`, `signIn` queries `profiles.email` to resolve the username, then signs in with the synthesized `username@lordle.local`.
+- `profiles.email` has a unique constraint plus a case-insensitive `unique index on lower(email)`. `signUp` translates Postgres `23505` on email into "An account with this email already exists".
+- Existing accounts created before the email field was added have `profiles.email = username@lordle.local`. Email login for those works only if the user types that synthesized address (harmless).
 
 ## Supabase
 
@@ -134,9 +141,9 @@ Because RLS prevents a player from updating another player's `player_summary` ro
 | `listMatches(userId)` | All matches involving this user, with joined challenger+opponent usernames, newest first |
 | `countPendingReceived(userId)` | Count for the HomeScreen badge |
 | `createMatch(challengerId, opponentId)` | Validates: no self-challenge, ≤3 active received by opponent, no existing active match between pair. Picks a random word, sets `expires_at = now + 24h`. |
-| `respondToMatch(matchId, accept)` | Sets status to `accepted` or `rejected` |
-| `saveMatchResult(match, userId, score, solved)` | Writes the calling player's score/solved columns. If both have now played, calls `finalizeMatch`. |
-| `finalizeExpiredMatches(userId)` | Lazy cleanup on MatchScreen mount — marks expired pending matches as `expired`, finalizes accepted ones. |
+| `respondToMatch(matchId, accept, userId)` | Sets status to `accepted` or `rejected`. Scoped to `status='pending' AND opponent_id=userId` so the challenger cannot accept their own match and a status flip cannot regress. Throws if no row matched. |
+| `saveMatchResult(match, userId, score, solved)` | Writes the calling player's score/solved columns. Filtered to `status='accepted'` AND the player's score column still null — returns `null` on no-op rather than corrupting state or double-finalizing. If both have now played, calls `finalizeMatch`. |
+| `finalizeExpiredMatches(userId)` | Lazy cleanup on MatchScreen mount — marks expired pending matches as `expired`, finalizes accepted ones. `finalizeMatch` is idempotent (`.neq('status','completed')`), safe to invoke concurrently. |
 
 ### Winner logic (`pickWinner` in matches.js)
 
@@ -147,7 +154,7 @@ Because RLS prevents a player from updating another player's `player_summary` ro
 
 - A player cannot challenge themselves
 - Recipient cannot have more than **3 active** (pending + accepted) incoming matches
-- No two simultaneous active matches between the same pair (checked in either direction)
+- No two simultaneous active matches between the same pair (checked in either direction). Backed by partial unique index `matches_active_pair_idx on (least, greatest) where status in ('pending','accepted')` — the application-level check is best-effort, the index is the real guarantee.
 
 ### Navigation flow
 
@@ -170,6 +177,23 @@ Tests live in `src/test/`. Run with `npm test`.
 | `scoring.test.js` | `computeGreenScore`, `computeBonus`, `WIN_BONUS` table, boundary values |
 | `timer.test.js` | Countdown, floor at 0, loss trigger, stops after game over (fake timers) |
 | `words.test.js` | All words 5 letters, uppercase, ANSWERS/VALID_WORDS parity |
+| `auth.test.js` | `signUp` (success, `@`-in-username, duplicate email, whitespace trim) and `signIn` (username path, email→username resolution, wrong password, unknown email). Mocks `src/lib/supabase` with a chainable query-builder stub. |
+
+40 tests across 5 files at last count.
+
+## Accessibility
+
+- `index.html` has `lang="es"` (UI is Spanish), plus `meta description` and `theme-color`.
+- All form inputs and icon-only buttons have `aria-label` (placeholders alone are not accessible names).
+- Dim label colors meet WCAG AA 4.5:1: dark mode `#7a7a98`, light mode `#6b7280`. Game-state colors on absent tiles and absent keyboard keys are intentionally low-contrast (visual feedback for ruled-out letters) and were not changed.
+
+## ESLint
+
+`npm run lint` currently reports **9 deferred errors**, all flagged for a future cleanup session — do not silently "fix" these without asking:
+
+- `react-hooks/refs` ×3 in `src/components/TweaksPanel.jsx:139` — reads `offsetRef.current` during render to position the panel. Needs to move to state or a CSS variable updated in an effect.
+- `react-hooks/set-state-in-effect` ×4 in `useAuth.js:26`, `useGameState.js:134`, `MatchScreen.jsx:48,52` — React 19's compiler-aware lint flags effects that call `setState` in their body. Several of these are genuine external→React syncs (timer→loss, debounced search) and may be acceptable as-is.
+- `no-empty` ×1 in `TweaksPanel.jsx` — empty `catch {}` block.
 
 ## Output style
 

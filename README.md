@@ -31,15 +31,25 @@ Lordle is a 5-letter word guessing game. You have up to 6 guesses and 10 minutes
 
 ## Features
 
-- **Auth** — username/password login and registration (no email required)
+- **Auth** — register with email + username + password; log in with **either email or username**
 - **Guest mode** — play without an account; no stats saved
 - **Home screen** — player stats dashboard (games played/won, best score, streak, match wins)
 - **Timer** — 10-minute countdown; running out ends the game as a loss
 - **Scoring** — green-tile points + solve bonus, persisted to Supabase
 - **Match system** — challenge registered players to head-to-head duels on the same word
 - **Settings panel** — dark/light mode, tile size, accent colours (persisted to `localStorage`)
-- **Tests** — Vitest suite covering game logic, scoring, words, and timer
+- **Accessible UI** — `lang="es"`, ARIA labels on all form inputs and icon-only buttons, WCAG AA color contrast
+- **Tests** — 40 Vitest tests across game logic, scoring, words, timer, and auth (Supabase mocked)
 - **Pre-commit hook** — husky runs `vitest run` automatically; failing tests block the commit
+
+### PageSpeed Insights (production)
+
+| Metric | Score |
+|---|---|
+| Performance | 94 |
+| Accessibility | 92 |
+| Best Practices | 100 |
+| SEO | 100 |
 
 ---
 
@@ -78,10 +88,10 @@ The app requires a Supabase project. Two manual steps:
 **1. Run the schema SQL**
 
 Open `supabase_schema.sql` and paste its full contents into the Supabase SQL Editor, then click Run. This creates:
-- `profiles` — one row per user (username, email)
+- `profiles` — one row per user (username, real email; both unique, email also case-insensitively unique)
 - `game_stats` — one row per completed game
 - `player_summary` — aggregate stats per player (total games, wins, points, streaks, match wins)
-- `matches` — head-to-head match records (word, scores, status, winner)
+- `matches` — head-to-head match records (word, scores, status, winner). Partial unique index `matches_active_pair_idx` blocks duplicate active matches between the same pair.
 - RLS policies for all tables
 - `award_match_win(uuid)` — SECURITY DEFINER RPC that increments match wins across the RLS boundary
 
@@ -128,6 +138,7 @@ lordle/
 │   │   └── words.js           # WORDS array → ANSWERS + VALID_WORDS (Set)
 │   └── test/
 │       ├── setup.js
+│       ├── auth.test.js          # signUp / signIn with mocked Supabase
 │       ├── gameLogic.test.js
 │       ├── scoring.test.js
 │       ├── timer.test.js
