@@ -94,13 +94,19 @@ export async function createMatch(challengerId, opponentId) {
   return data
 }
 
-export async function respondToMatch(matchId, accept) {
+export async function respondToMatch(matchId, accept, userId) {
   const status = accept ? 'accepted' : 'rejected'
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('matches')
     .update({ status })
     .eq('id', matchId)
+    .eq('status', 'pending')
+    .eq('opponent_id', userId)
+    .select('id')
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error('No se pudo responder a este reto.')
+  }
 }
 
 function pickWinner(m) {
@@ -122,18 +128,24 @@ function pickWinner(m) {
 
 async function finalizeMatch(match) {
   const winnerId = pickWinner(match)
-  await supabase
+  const { data, error } = await supabase
     .from('matches')
     .update({ status: 'completed', winner_id: winnerId })
     .eq('id', match.id)
-  if (winnerId) {
+    .neq('status', 'completed')
+    .select('id')
+  if (error) throw error
+  // Only credit the winner if this call actually performed the transition
+  // (guards against double-finalize when both players save concurrently).
+  if (data && data.length > 0 && winnerId) {
     await supabase.rpc('award_match_win', { winner: winnerId })
   }
 }
 
 export async function saveMatchResult(match, userId, score, solved) {
   const isChallenger = match.challenger_id === userId
-  const fields = isChallenger
+  const scoreCol = isChallenger ? 'challenger_score'  : 'opponent_score'
+  const fields   = isChallenger
     ? { challenger_score: score, challenger_solved: solved }
     : { opponent_score: score, opponent_solved: solved }
 
@@ -141,9 +153,16 @@ export async function saveMatchResult(match, userId, score, solved) {
     .from('matches')
     .update(fields)
     .eq('id', match.id)
+    .eq('status', 'accepted')
+    .is(scoreCol, null)
     .select(SELECT_FULL)
-    .single()
+    .maybeSingle()
   if (error) throw error
+  if (!updated) {
+    // Either the match isn't accepted anymore or this player already saved.
+    // Treat as a no-op rather than corrupting state or double-finalizing.
+    return null
+  }
 
   const bothPlayed =
     updated.challenger_score !== null && updated.challenger_score !== undefined &&
