@@ -12,6 +12,60 @@ function timeLeftLabel(expiresAt) {
   return `${m}m`
 }
 
+function Section({ title, count, tokens, children }) {
+  return (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 600, letterSpacing: '0.12em',
+        textTransform: 'uppercase', color: tokens.dimColor,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        {title}
+        {count !== undefined && (
+          <span style={{
+            background: tokens.isDark ? '#2a2a3c' : '#e5e7eb', color: tokens.subtle,
+            padding: '1px 7px', borderRadius: 999, fontSize: 10,
+          }}>{count}</span>
+        )}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function Card({ tokens, style, children }) {
+  return (
+    <div style={{
+      background: tokens.cardBg,
+      border: `1px solid ${tokens.cardBorder}`,
+      borderRadius: 10,
+      padding: '12px 14px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+      ...style,
+    }}>{children}</div>
+  )
+}
+
+function SmallButton({ label, onClick, primary = false, danger = false, disabled, tokens }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '7px 12px',
+        background: danger ? 'transparent' : (primary ? '#4ade80' : 'transparent'),
+        color: primary ? '#12121e' : (danger ? '#f87171' : tokens.textColor),
+        border: primary ? 'none' : `1px solid ${danger ? '#f87171' : tokens.cardBorder}`,
+        borderRadius: 6, fontSize: 11, fontWeight: 700,
+        fontFamily: "'Outfit', sans-serif",
+        letterSpacing: '0.06em', textTransform: 'uppercase',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >{label}</button>
+  )
+}
+
 export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
   const isDark = theme === 'dark'
   const userId = auth.user.id
@@ -31,6 +85,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
   const textColor  = isDark ? '#e8e8f0' : '#1a1a2e'
   const dimColor   = isDark ? '#7a7a98' : '#6b7280'
   const subtle     = isDark ? '#888888' : '#6b7280'
+  const tokens = { isDark, cardBg, cardBorder, textColor, dimColor, subtle }
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -115,54 +170,6 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
     }
   }
 
-  const Section = ({ title, count, children }) => (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{
-        fontSize: 11, fontWeight: 600, letterSpacing: '0.12em',
-        textTransform: 'uppercase', color: dimColor,
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        {title}
-        {count !== undefined && (
-          <span style={{
-            background: isDark ? '#2a2a3c' : '#e5e7eb', color: subtle,
-            padding: '1px 7px', borderRadius: 999, fontSize: 10,
-          }}>{count}</span>
-        )}
-      </div>
-      {children}
-    </div>
-  )
-
-  const Card = ({ children, ...rest }) => (
-    <div style={{
-      background: cardBg,
-      border: `1px solid ${cardBorder}`,
-      borderRadius: 10,
-      padding: '12px 14px',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-      ...rest.style,
-    }}>{children}</div>
-  )
-
-  const SmallButton = ({ label, onClick, primary = false, danger = false, disabled }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        padding: '7px 12px',
-        background: danger ? 'transparent' : (primary ? '#4ade80' : 'transparent'),
-        color: primary ? '#12121e' : (danger ? '#f87171' : textColor),
-        border: primary ? 'none' : `1px solid ${danger ? '#f87171' : cardBorder}`,
-        borderRadius: 6, fontSize: 11, fontWeight: 700,
-        fontFamily: "'Outfit', sans-serif",
-        letterSpacing: '0.06em', textTransform: 'uppercase',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : 1,
-      }}
-    >{label}</button>
-  )
-
   const otherOf = (m) => m.challenger_id === userId ? m.opponent : m.challenger
   const oppNameOf = (m) => otherOf(m)?.username || '…'
 
@@ -227,9 +234,9 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
         {results.length > 0 && (
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {results.map(p => (
-              <Card key={p.id}>
+              <Card key={p.id} tokens={tokens}>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>{p.username}</span>
-                <SmallButton label="Retar" primary onClick={() => challenge(p)} disabled={busy} />
+                <SmallButton label="Retar" primary onClick={() => challenge(p)} disabled={busy} tokens={tokens} />
               </Card>
             ))}
           </div>
@@ -240,9 +247,9 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
         {loading && <div style={{ color: dimColor, fontSize: 12, textAlign: 'center' }}>Cargando…</div>}
 
         {!loading && received.length > 0 && (
-          <Section title="Recibidos" count={received.length}>
+          <Section title="Recibidos" count={received.length} tokens={tokens}>
             {received.map(m => (
-              <Card key={m.id}>
+              <Card key={m.id} tokens={tokens}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{oppNameOf(m)}</span>
                   <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
@@ -250,8 +257,8 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <SmallButton label="Aceptar" primary onClick={() => respond(m, true)}  disabled={busy} />
-                  <SmallButton label="Rechazar" danger onClick={() => respond(m, false)} disabled={busy} />
+                  <SmallButton label="Aceptar" primary onClick={() => respond(m, true)}  disabled={busy} tokens={tokens} />
+                  <SmallButton label="Rechazar" danger onClick={() => respond(m, false)} disabled={busy} tokens={tokens} />
                 </div>
               </Card>
             ))}
@@ -259,25 +266,25 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
         )}
 
         {!loading && playable.length > 0 && (
-          <Section title="Listos para jugar" count={playable.length}>
+          <Section title="Listos para jugar" count={playable.length} tokens={tokens}>
             {playable.map(m => (
-              <Card key={m.id} style={{ cursor: 'pointer' }}>
+              <Card key={m.id} tokens={tokens} style={{ cursor: 'pointer' }}>
                 <div onClick={() => onPlayMatch(m)} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, cursor: 'pointer' }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>vs {oppNameOf(m)}</span>
                   <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
                     Expira en {timeLeftLabel(m.expires_at)}
                   </span>
                 </div>
-                <SmallButton label="Jugar" primary onClick={() => onPlayMatch(m)} />
+                <SmallButton label="Jugar" primary onClick={() => onPlayMatch(m)} tokens={tokens} />
               </Card>
             ))}
           </Section>
         )}
 
         {!loading && (sent.length > 0 || waitingMine.length > 0) && (
-          <Section title="Esperando">
+          <Section title="Esperando" tokens={tokens}>
             {sent.map(m => (
-              <Card key={m.id}>
+              <Card key={m.id} tokens={tokens}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{oppNameOf(m)}</span>
                   <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
@@ -288,7 +295,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
               </Card>
             ))}
             {waitingMine.map(m => (
-              <Card key={m.id}>
+              <Card key={m.id} tokens={tokens}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>vs {oppNameOf(m)}</span>
                   <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
@@ -302,7 +309,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
         )}
 
         {!loading && completed.length > 0 && (
-          <Section title="Resultados">
+          <Section title="Resultados" tokens={tokens}>
             {completed.map(m => {
               const iAmChallenger = m.challenger_id === userId
               const myScore  = iAmChallenger ? m.challenger_score : m.opponent_score
@@ -318,7 +325,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
                 ? subtle
                 : youWon ? '#4ade80' : isDraw ? subtle : '#f87171'
               return (
-                <Card key={m.id}>
+                <Card key={m.id} tokens={tokens}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <span style={{ fontSize: 13, fontWeight: 600 }}>vs {oppNameOf(m)}</span>
                     <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>

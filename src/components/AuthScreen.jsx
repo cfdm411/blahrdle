@@ -161,7 +161,7 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
           type="button"
           onClick={onGuest}
           style={{
-            background: 'transparent', border: 'none', cursor: 'pointer',
+            background: 'transparent', cursor: 'pointer',
             color: isDark ? '#7a7a98' : '#6b7280', fontSize: 12,
             fontFamily: "'Outfit', sans-serif",
             letterSpacing: '0.06em',
