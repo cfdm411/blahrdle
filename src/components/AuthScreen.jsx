@@ -3,19 +3,32 @@ import { useState } from 'react'
 export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
   const isDark = theme === 'dark'
   const [mode, setMode]       = useState('login')
-  const [username, setUser]   = useState('')
+  const [identity, setIdent]  = useState('')  // login: email-or-username; register: email
+  const [username, setUser]   = useState('')  // register only
   const [password, setPass]   = useState('')
+  const [confirm, setConfirm] = useState('')
   const [error, setError]     = useState(null)
   const [busy, setBusy]       = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
     if (busy) return
+    if (mode === 'register' && password !== confirm) {
+      setError('Passwords do not match')
+      return
+    }
     setError(null); setBusy(true)
-    const fn = mode === 'login' ? onSignIn : onSignUp
-    const { error } = await fn(username.trim(), password)
+    const { error } = mode === 'login'
+      ? await onSignIn(identity.trim(), password)
+      : await onSignUp(identity.trim(), username.trim(), password)
     setBusy(false)
     if (error) setError(error.message || String(error))
+  }
+
+  const switchMode = () => {
+    setMode(m => m === 'login' ? 'register' : 'login')
+    setError(null)
+    setIdent(''); setUser(''); setPass(''); setConfirm('')
   }
 
   const inputStyle = {
@@ -46,14 +59,30 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
           LORDLE
         </div>
 
+        {mode === 'register' && (
+          <input
+            value={identity}
+            onChange={e => setIdent(e.target.value)}
+            placeholder="Email"
+            type="email"
+            autoComplete="email"
+            required
+            style={inputStyle}
+          />
+        )}
         <input
-          value={username}
-          onChange={e => setUser(e.target.value)}
-          placeholder="Username"
+          value={mode === 'login' ? identity : username}
+          onChange={e => mode === 'login' ? setIdent(e.target.value) : setUser(e.target.value)}
+          placeholder={mode === 'login' ? 'Email or username' : 'Username'}
           autoComplete="username"
-          required minLength={3} maxLength={20}
+          required minLength={mode === 'login' ? 1 : 3} maxLength={mode === 'login' ? 254 : 20}
           style={inputStyle}
         />
+        {mode === 'login' && (
+          <div style={{ fontSize: 11, color: isDark ? '#6b6b88' : '#9ca3af', marginTop: -6 }}>
+            You can log in with your email or your username
+          </div>
+        )}
         <input
           value={password}
           onChange={e => setPass(e.target.value)}
@@ -63,6 +92,17 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
           required minLength={6}
           style={inputStyle}
         />
+        {mode === 'register' && (
+          <input
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            type="password"
+            placeholder="Confirm password"
+            autoComplete="new-password"
+            required minLength={6}
+            style={inputStyle}
+          />
+        )}
 
         {error && (
           <div style={{ fontSize: 12, color: '#ef4444', textAlign: 'center' }}>
@@ -91,7 +131,7 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
 
         <button
           type="button"
-          onClick={() => { setMode(m => m === 'login' ? 'register' : 'login'); setError(null) }}
+          onClick={switchMode}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
             color: isDark ? '#8a8aa6' : '#6b7280', fontSize: 12,
