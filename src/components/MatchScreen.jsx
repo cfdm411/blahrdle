@@ -81,7 +81,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
     if (busy) return
     setBusy(true)
     try {
-      await respondToMatch(match.id, accept)
+      await respondToMatch(match.id, accept, userId)
       await refresh()
     } catch (e) {
       flash(e.message || String(e), true)

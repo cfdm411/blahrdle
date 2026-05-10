@@ -95,6 +95,12 @@ create table if not exists public.matches (
 create index if not exists matches_opponent_status_idx   on public.matches (opponent_id, status);
 create index if not exists matches_challenger_status_idx on public.matches (challenger_id, status);
 
+-- Prevent duplicate active matches between the same pair of players in either direction.
+create unique index if not exists matches_active_pair_idx on public.matches (
+  least(challenger_id, opponent_id),
+  greatest(challenger_id, opponent_id)
+) where status in ('pending', 'accepted');
+
 alter table public.matches enable row level security;
 
 drop policy if exists matches_select_involved   on public.matches;
