@@ -10,9 +10,13 @@
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   username text unique not null,
-  email text,
+  email text unique,
   created_at timestamptz default now()
 );
+
+-- Case-insensitive email uniqueness (covers existing rows that differ only in case).
+create unique index if not exists profiles_email_lower_idx
+  on public.profiles (lower(email));
 
 create table if not exists public.game_stats (
   id uuid default gen_random_uuid() primary key,
