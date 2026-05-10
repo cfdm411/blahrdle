@@ -29,7 +29,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
   const cardBg     = isDark ? '#1a1a2e' : '#ffffff'
   const cardBorder = isDark ? '#2e2e42' : '#e5e7eb'
   const textColor  = isDark ? '#e8e8f0' : '#1a1a2e'
-  const dimColor   = isDark ? '#5a5a78' : '#9ca3af'
+  const dimColor   = isDark ? '#7a7a98' : '#6b7280'
   const subtle     = isDark ? '#888888' : '#6b7280'
 
   const refresh = useCallback(async () => {
@@ -213,6 +213,8 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Buscar jugador por nombre…"
+          aria-label="Buscar jugador por nombre"
+          type="search"
           style={{
             width: '100%', padding: '12px 14px',
             background: cardBg, color: textColor,

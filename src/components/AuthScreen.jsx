@@ -70,6 +70,7 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
             value={identity}
             onChange={e => setIdent(e.target.value)}
             placeholder="Email"
+            aria-label="Email"
             type="email"
             autoComplete="email"
             required
@@ -80,12 +81,13 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
           value={mode === 'login' ? identity : username}
           onChange={e => mode === 'login' ? setIdent(e.target.value) : setUser(e.target.value)}
           placeholder={mode === 'login' ? 'Email or username' : 'Username'}
+          aria-label={mode === 'login' ? 'Email or username' : 'Username'}
           autoComplete="username"
           required minLength={mode === 'login' ? 1 : 3} maxLength={mode === 'login' ? 254 : 20}
           style={inputStyle}
         />
         {mode === 'login' && (
-          <div style={{ fontSize: 11, color: isDark ? '#6b6b88' : '#9ca3af', marginTop: -6 }}>
+          <div style={{ fontSize: 11, color: isDark ? '#7a7a98' : '#6b7280', marginTop: -6 }}>
             You can log in with your email or your username
           </div>
         )}
@@ -94,6 +96,7 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
           onChange={e => setPass(e.target.value)}
           type="password"
           placeholder="Password"
+          aria-label="Password"
           autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
           required minLength={6}
           style={inputStyle}
@@ -104,6 +107,7 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
             onChange={e => setConfirm(e.target.value)}
             type="password"
             placeholder="Confirm password"
+            aria-label="Confirm password"
             autoComplete="new-password"
             required minLength={6}
             style={inputStyle}
@@ -158,7 +162,7 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
           onClick={onGuest}
           style={{
             background: 'transparent', border: 'none', cursor: 'pointer',
-            color: isDark ? '#888888' : '#aaaaaa', fontSize: 12,
+            color: isDark ? '#7a7a98' : '#6b7280', fontSize: 12,
             fontFamily: "'Outfit', sans-serif",
             letterSpacing: '0.06em',
             border: `1px solid ${isDark ? '#444444' : '#cccccc'}`,

@@ -34,7 +34,7 @@ const Tile = memo(function Tile({ letter, state, theme, accentCorrect, accentPre
   const isDark = theme === "dark"
   const styleMap = {
     [TILE.EMPTY]:   { bg: "transparent", border: isDark ? "#2e2e42" : "#d1d5db", color: "inherit" },
-    [TILE.FILLED]:  { bg: "transparent", border: isDark ? "#5a5a78" : "#9ca3af", color: "inherit" },
+    [TILE.FILLED]:  { bg: "transparent", border: isDark ? "#7a7a98" : "#6b7280", color: "inherit" },
     [TILE.CORRECT]: { bg: accentCorrect, border: accentCorrect, color: "#12121e" },
     [TILE.PRESENT]: { bg: accentPresent, border: accentPresent, color: "#12121e" },
     [TILE.ABSENT]:  { bg: isDark ? "#2a2a3c" : "#d1d5db", border: isDark ? "#2a2a3c" : "#d1d5db", color: isDark ? "#6b6b88" : "#6b7280" },
@@ -122,7 +122,7 @@ function ScoreBadge({ label, value, theme }) {
       <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: isDark ? "#e8e8f0" : "#1a1a2e" }}>
         {value}
       </span>
-      <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: isDark ? "#5a5a78" : "#9ca3af" }}>
+      <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: isDark ? "#7a7a98" : "#6b7280" }}>
         {label}
       </span>
     </div>
@@ -152,7 +152,7 @@ export default function App() {
     return (
       <div style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: isDark ? '#12121e' : '#f7f7f2', color: isDark ? '#5a5a78' : '#9ca3af',
+        background: isDark ? '#12121e' : '#f7f7f2', color: isDark ? '#7a7a98' : '#6b7280',
         fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
       }}>Loading…</div>
     )
@@ -288,7 +288,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
 
   const tileSize = tweaks.tileSize
   const gap = Math.max(4, Math.round(tileSize * 0.07))
-  const iconColor = isDark ? "#5a5a78" : "#9ca3af"
+  const iconColor = isDark ? "#7a7a98" : "#6b7280"
 
   return (
     <div style={{
@@ -360,6 +360,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
             <button
               onClick={() => setTweaksOpen(o => !o)}
               title="Settings"
+              aria-label="Open settings"
               style={{
                 background: "transparent", border: "none", cursor: "pointer",
                 color: iconColor, padding: 4, display: "flex", alignItems: "center",
@@ -383,7 +384,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
           {(isMatch || challengerName) && (
             <>
               <span style={{ fontSize: 11, color: isDark ? "#3a3a52" : "#d1d5db", letterSpacing: "0.06em" }}>vs</span>
-              <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", color: isDark ? "#5a5a78" : "#9ca3af" }}>
+              <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", color: isDark ? "#7a7a98" : "#6b7280" }}>
                 {isMatch
                   ? (match.challenger_id === auth.user.id ? match.opponent?.username : match.challenger?.username)
                   : challengerName}
@@ -441,7 +442,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <span style={{
                 fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase",
-                color: isDark ? "#5a5a78" : "#9ca3af", fontWeight: 500,
+                color: isDark ? "#7a7a98" : "#6b7280", fontWeight: 500,
               }}>
                 Score
               </span>
@@ -463,7 +464,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
                   ? (isDark ? "#f87171" : "#ef4444")
                   : timeLeft < 180
                     ? "#f59e0b"
-                    : (isDark ? "#5a5a78" : "#9ca3af"),
+                    : (isDark ? "#7a7a98" : "#6b7280"),
               }}
             >
               {formatTime(timeLeft)}
@@ -477,7 +478,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
             marginTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
             animation: "bounce-in 0.4s ease",
           }}>
-            <div style={{ fontSize: 13, letterSpacing: "0.06em", color: isDark ? "#5a5a78" : "#9ca3af", textTransform: "uppercase" }}>
+            <div style={{ fontSize: 13, letterSpacing: "0.06em", color: isDark ? "#7a7a98" : "#6b7280", textTransform: "uppercase" }}>
               {won ? "Well played!" : `The word was ${target}`}
             </div>
 
@@ -584,7 +585,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
             onClick={onGoLogin}
             style={{
               background: "transparent", border: "none", cursor: "pointer",
-              color: isDark ? "#5a5a78" : "#9ca3af",
+              color: isDark ? "#7a7a98" : "#6b7280",
               fontSize: 11, fontWeight: 600, letterSpacing: "0.06em",
               fontFamily: "'Outfit', sans-serif",
               textDecoration: "underline", textUnderlineOffset: 3, padding: 0,
