@@ -82,7 +82,7 @@ const Key = memo(function Key({ label, state, onPress, theme, accentCorrect, acc
   const stateStyle = {
     [TILE.CORRECT]: { bg: accentCorrect, color: "#12121e", border: "transparent" },
     [TILE.PRESENT]: { bg: accentPresent, color: "#12121e", border: "transparent" },
-    [TILE.ABSENT]:  { bg: isDark ? "#1e1e2e" : "#9ca3af", color: isDark ? "#404058" : "#e5e7eb", border: "transparent" },
+    [TILE.ABSENT]:  { bg: isDark ? "#111120" : "#6b7280", color: isDark ? "#5a5a78" : "#f3f4f6", border: "transparent" },
   }
   const def = { bg: isDark ? "#2a2a3c" : "#e5e7eb", color: isDark ? "#c8c8e0" : "#374151", border: isDark ? "#3a3a52" : "#d1d5db" }
   const s = stateStyle[state] || def
