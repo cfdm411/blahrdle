@@ -106,6 +106,7 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
 
     const isWon = states.every(s => s === TILE.CORRECT)
     if (isWon) {
+      pendingGameOverRef.current = true
       setTimeout(() => {
         setWon(true)
         setGameOver(true)
@@ -118,6 +119,7 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
         })
       }, 1600)
     } else if (newGuesses.length === 6) {
+      pendingGameOverRef.current = true
       setTimeout(() => triggerLoss(), 1600)
     }
   }, [currentGuess, guesses, gameOver, target, showToast, triggerLoss, trackLocalScores])
@@ -134,8 +136,10 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
     if (timeLeft === 0 && !gameOver) triggerLoss()
   }, [timeLeft, gameOver, triggerLoss])
 
+  const pendingGameOverRef = useRef(false)
+
   const handleKey = useCallback((key) => {
-    if (gameOver) return
+    if (gameOver || pendingGameOverRef.current) return
     if (key === "ENTER" || key === "Enter") { submitGuess(); return }
     if (key === "⌫" || key === "Backspace") { setCurrentGuess(p => p.slice(0, -1)); return }
     if (/^[A-Za-z]$/.test(key) && currentGuess.length < 5) {
@@ -155,6 +159,7 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
   }, [])
 
   const resetGame = useCallback(() => {
+    pendingGameOverRef.current = false
     setTarget(getRandomWord())
     setGuesses([])
     setCurrentGuess("")
