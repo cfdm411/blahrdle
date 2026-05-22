@@ -22,6 +22,24 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
   const [toast, setToast]               = useState(null)
   const [revealingRow, setRevealingRow] = useState(null)
   const [timeLeft, setTimeLeft]         = useState(TIMER_SECONDS)
+  const [timerPaused, setTimerPaused]   = useState(false)
+  const lossHandledRef = useRef(false)
+  const pendingTimeoutsRef = useRef(new Set())
+
+  const scheduleTimeout = useCallback((fn, ms) => {
+    const id = setTimeout(() => {
+      pendingTimeoutsRef.current.delete(id)
+      fn()
+    }, ms)
+    pendingTimeoutsRef.current.add(id)
+    return id
+  }, [])
+
+  const clearPendingTimeouts = useCallback(() => {
+    for (const id of pendingTimeoutsRef.current) clearTimeout(id)
+    pendingTimeoutsRef.current.clear()
+  }, [])
+
   const [scores, setScores] = useState(() => {
     try { return JSON.parse(localStorage.getItem("lordle_scores") || "{}") } catch { return {} }
   })
@@ -64,11 +82,13 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
 
   const showToast = useCallback((msg, dur = 1800) => {
     setToast(msg)
-    setTimeout(() => setToast(null), dur)
-  }, [])
+    scheduleTimeout(() => setToast(null), dur)
+  }, [scheduleTimeout])
 
   // Uses functional setScores to avoid depending on myWins/myLosses/myStreak
   const triggerLoss = useCallback((msg = target) => {
+    if (lossHandledRef.current) return
+    lossHandledRef.current = true
     setGameOver(true)
     showToast(msg, 3500)
     if (!trackLocalScores) return
@@ -80,17 +100,17 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
   }, [target, showToast, trackLocalScores])
 
   const submitGuess = useCallback(() => {
-    if (gameOver) return
+    if (gameOver || timeLeft === 0) return
 
     if (currentGuess.length < 5) {
       setShakingRow(guesses.length)
-      setTimeout(() => setShakingRow(null), 500)
+      scheduleTimeout(() => setShakingRow(null), 500)
       showToast("Not enough letters")
       return
     }
     if (!VALID_WORDS.has(currentGuess)) {
       setShakingRow(guesses.length)
-      setTimeout(() => setShakingRow(null), 500)
+      scheduleTimeout(() => setShakingRow(null), 500)
       showToast("Not a valid word")
       return
     }
@@ -100,13 +120,14 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
 
     // last tile: delay 4×200=800ms + 700ms animation → done at 1500ms
     setRevealingRow(guesses.length)
-    setTimeout(() => setRevealingRow(null), 1550)
+    scheduleTimeout(() => setRevealingRow(null), 1550)
     setGuesses(newGuesses)
     setCurrentGuess("")
 
     const isWon = states.every(s => s === TILE.CORRECT)
     if (isWon) {
-      setTimeout(() => {
+      setTimerPaused(true)
+      scheduleTimeout(() => {
         setWon(true)
         setGameOver(true)
         showToast("Brilliant! 🎉", 3000)
@@ -118,16 +139,17 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
         })
       }, 1600)
     } else if (newGuesses.length === 6) {
-      setTimeout(() => triggerLoss(), 1600)
+      setTimerPaused(true)
+      scheduleTimeout(() => triggerLoss(), 1600)
     }
-  }, [currentGuess, guesses, gameOver, target, showToast, triggerLoss, trackLocalScores])
+  }, [currentGuess, guesses, gameOver, timeLeft, target, showToast, triggerLoss, trackLocalScores, scheduleTimeout])
 
   // Countdown — interval runs while game is active; cleanup when gameOver flips true
   useEffect(() => {
-    if (gameOver) return
+    if (gameOver || timerPaused) return
     const id = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000)
     return () => clearInterval(id)
-  }, [gameOver])
+  }, [gameOver, timerPaused])
 
   // Trigger loss when timer hits zero
   useEffect(() => {
@@ -135,7 +157,7 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
   }, [timeLeft, gameOver, triggerLoss])
 
   const handleKey = useCallback((key) => {
-    if (gameOver) return
+    if (gameOver || timeLeft === 0) return
     // Block input during a terminal reveal (win row or 6th-guess row).
     // revealingRow is the index of the row currently animating; if that row is a
     // win or the last possible guess we lock the board immediately — no ref needed.
@@ -149,7 +171,7 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
     if (/^[A-Za-z]$/.test(key) && currentGuess.length < 5) {
       setCurrentGuess(p => p + key.toUpperCase())
     }
-  }, [gameOver, revealingRow, guesses, submitGuess, currentGuess])
+  }, [gameOver, timeLeft, revealingRow, guesses, submitGuess, currentGuess])
 
   // Sync ref on every render so the stable listener always calls the latest handleKey
   const handleKeyRef = useRef(handleKey)
@@ -163,13 +185,19 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
   }, [])
 
   const resetGame = useCallback(() => {
+    clearPendingTimeouts()
     setTarget(getRandomWord())
     setGuesses([])
     setCurrentGuess("")
     setGameOver(false)
     setWon(false)
+    setShakingRow(null)
+    setToast(null)
+    setRevealingRow(null)
+    setTimerPaused(false)
+    lossHandledRef.current = false
     setTimeLeft(TIMER_SECONDS)
-  }, [])
+  }, [clearPendingTimeouts])
 
   return {
     target, gameOver, won,

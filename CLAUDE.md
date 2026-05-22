@@ -198,3 +198,16 @@ Tests live in `src/test/`. Run with `npm test`.
 ## Output style
 
 The user wants terse responses. Don't narrate intent before tool calls; don't summarize after every change. Code itself: no comments unless a non-obvious WHY needs explaining.
+
+## Known bugs (unresolved)
+
+- T1a (FIXED): Reset corruption — pendingTimeoutsRef + clearPendingTimeouts()
+  at top of resetGame; shakingRow, toast, revealingRow cleared on reset.
+- T1b (OPEN): Stacked reveals during active play — rapid back-to-back submits
+  still stack independent 1550ms timers within one game. greenScore can
+  desync mid-game before reset is ever triggered.
+- T7: Timer loss during a non-terminal reveal can save a low totalScore —
+  greenScore excludes the in-flight row's greens at save time.
+- M1: Schema/docs drift — supabase_schema.sql still references award_match_win;
+  live DB uses save_match_result + process_expired_matches. Runtime is correct;
+  risk is onboarding and future migrations from stale docs.

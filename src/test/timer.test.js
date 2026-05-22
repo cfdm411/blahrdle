@@ -43,4 +43,24 @@ describe('timer', () => {
     act(() => { vi.advanceTimersByTime(5000) })
     expect(result.current.timeLeft).toBe(frozenTime)
   })
+
+  it('pauses timer immediately on winning submit, before gameOver flips', async () => {
+    const { result } = renderHook(() =>
+      useGameState({ initialTarget: 'HELLO' })
+    )
+
+    act(() => { vi.advanceTimersByTime((TIMER_SECONDS - 2) * 1000) })
+    expect(result.current.timeLeft).toBe(2)
+
+    for (const k of 'HELLO') {
+      await act(async () => { result.current.handleKey(k) })
+    }
+    await act(async () => { result.current.handleKey('Enter') })
+
+    expect(result.current.gameOver).toBe(false)
+    expect(result.current.timeLeft).toBe(2)
+
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(result.current.timeLeft).toBe(2)
+  })
 })

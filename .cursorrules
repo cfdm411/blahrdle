@@ -1,0 +1,50 @@
+# Lordle — Cursor Rules
+
+## Project
+Wordle clone with 10-minute timer, scoring system, and head-to-head match system.
+Vite + React 19, Supabase (auth + stats), deployed to Vercel.
+
+## Stack
+- React 19, Vite, JavaScript (no TypeScript)
+- Supabase: auth + database
+- Vitest: testing
+- Vercel: deployment
+
+## Architecture — who owns what
+- App.jsx: auth gate, screen routing, presentational Game wrapper. No game logic.
+- useGameState.js: all game state, scoring, timer, keyboard. Single source of truth.
+- useAuth.js: Supabase session only.
+- gameLogic.js: pure functions only — evaluateGuess, computeGreenScore, computeBonus.
+- matches.js: match service layer.
+- words.js: single word list. ANSWERS and VALID_WORDS point to the same data.
+
+## Conventions — never break these
+- Inline styles only. No CSS modules, no CSS-in-JS libraries.
+- React.memo on Tile and Key components. Do not remove.
+- useMemo on letterStates and rows. Do not remove.
+- Keyboard listener in useGameState uses useRef pattern — listener attaches once at mount, reads handleKeyRef.current. Never add handleKey to the listener effect's dep array.
+- ANSWERS and VALID_WORDS are the same list. Do not split them.
+- Word selection is random per game. No date-based selection.
+- Animation timing is coupled between CSS and JS — tile-reveal is 0.7s, stagger is colIdx * 200ms, setRevealingRow fires at 1550ms, win/loss callback at 1600ms. If you change any of these, change all of them.
+
+## Testing
+- All logic changes require passing tests. Run: npm test
+- Pre-commit hook (husky) runs vitest automatically — do not use --no-verify
+- Tests live in src/test/
+
+## Git
+- Always commit to develop. Never directly to main.
+- Git identity: cfdm411 <cfdm411@gmail.com>
+
+## Code style
+- No comments unless the WHY is non-obvious
+- No placeholder code, no TODOs in output
+- No unsolicited refactors — fix only what was asked
+- Don't rewrite working code unless explicitly instructed
+- Functional components only
+
+## ESLint
+9 deferred errors exist intentionally — do not fix them silently. Ask before touching.
+
+## Output
+Terse. No narration before or after changes. No summaries unless asked.
