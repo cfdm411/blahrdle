@@ -1,7 +1,6 @@
 import { supabase } from './supabase'
-import { ANSWERS } from '../data/words'
+import { getRandomWord } from './gameLogic'
 
-const ANSWER_POOL = [...new Set(ANSWERS)]
 const ACTIVE_STATES = ['pending', 'accepted']
 const MATCH_DURATION_MS = 24 * 60 * 60 * 1000
 
@@ -12,10 +11,6 @@ const SELECT_FULL = `
   challenger:profiles!matches_challenger_id_fkey(id, username),
   opponent:profiles!matches_opponent_id_fkey(id, username)
 `
-
-function pickWord() {
-  return ANSWER_POOL[Math.floor(Math.random() * ANSWER_POOL.length)]
-}
 
 export async function searchProfiles(query, currentUserId) {
   const q = (query || '').trim()
@@ -84,7 +79,7 @@ export async function createMatch(challengerId, opponentId) {
     .insert({
       challenger_id: challengerId,
       opponent_id: opponentId,
-      word: pickWord(),
+      word: getRandomWord(),
       status: 'pending',
       expires_at: expiresAt,
     })

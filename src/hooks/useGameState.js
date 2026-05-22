@@ -1,16 +1,10 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { ANSWERS, VALID_WORDS } from '../data/words'
-import { TILE, evaluateGuess, computeGreenScore, computeBonus } from '../lib/gameLogic'
+import { VALID_WORDS } from '../data/words'
+import { TILE, evaluateGuess, computeGreenScore, computeBonus, getRandomWord } from '../lib/gameLogic'
 
 export { TILE }
 
-const ANSWER_POOL = [...new Set(ANSWERS)]
-
 export const TIMER_SECONDS = 600
-
-function getRandomWord() {
-  return ANSWER_POOL[Math.floor(Math.random() * ANSWER_POOL.length)]
-}
 
 export function useGameState({ initialTarget = null, trackLocalScores = true } = {}) {
   const [target, setTarget]             = useState(() => initialTarget || getRandomWord())

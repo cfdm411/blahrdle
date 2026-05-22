@@ -1,3 +1,11 @@
+import { ANSWERS } from '../data/words'
+
+const ANSWER_POOL = [...new Set(ANSWERS)]
+
+export function getRandomWord() {
+  return ANSWER_POOL[Math.floor(Math.random() * ANSWER_POOL.length)]
+}
+
 export const TILE = {
   EMPTY: "empty", FILLED: "filled", CORRECT: "correct", PRESENT: "present", ABSENT: "absent",
 }
