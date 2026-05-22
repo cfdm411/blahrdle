@@ -9,5 +9,4 @@ CREATE POLICY "users can read own full profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
 
-Drop the existing open anon policy before applying:
 DROP POLICY IF EXISTS "profiles are viewable by everyone" ON profiles;
