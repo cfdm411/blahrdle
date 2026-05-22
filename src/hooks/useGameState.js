@@ -106,7 +106,6 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
 
     const isWon = states.every(s => s === TILE.CORRECT)
     if (isWon) {
-      pendingGameOverRef.current = true
       setTimeout(() => {
         setWon(true)
         setGameOver(true)
@@ -119,7 +118,6 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
         })
       }, 1600)
     } else if (newGuesses.length === 6) {
-      pendingGameOverRef.current = true
       setTimeout(() => triggerLoss(), 1600)
     }
   }, [currentGuess, guesses, gameOver, target, showToast, triggerLoss, trackLocalScores])
@@ -136,16 +134,22 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
     if (timeLeft === 0 && !gameOver) triggerLoss()
   }, [timeLeft, gameOver, triggerLoss])
 
-  const pendingGameOverRef = useRef(false)
-
   const handleKey = useCallback((key) => {
-    if (gameOver || pendingGameOverRef.current) return
+    if (gameOver) return
+    // Block input during a terminal reveal (win row or 6th-guess row).
+    // revealingRow is the index of the row currently animating; if that row is a
+    // win or the last possible guess we lock the board immediately — no ref needed.
+    if (revealingRow !== null) {
+      const isWinReveal   = guesses[revealingRow]?.states.every(s => s === TILE.CORRECT)
+      const isFinalReveal = guesses.length === 6
+      if (isWinReveal || isFinalReveal) return
+    }
     if (key === "ENTER" || key === "Enter") { submitGuess(); return }
     if (key === "⌫" || key === "Backspace") { setCurrentGuess(p => p.slice(0, -1)); return }
     if (/^[A-Za-z]$/.test(key) && currentGuess.length < 5) {
       setCurrentGuess(p => p + key.toUpperCase())
     }
-  }, [gameOver, submitGuess, currentGuess])
+  }, [gameOver, revealingRow, guesses, submitGuess, currentGuess])
 
   // Sync ref on every render so the stable listener always calls the latest handleKey
   const handleKeyRef = useRef(handleKey)
@@ -159,7 +163,6 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
   }, [])
 
   const resetGame = useCallback(() => {
-    pendingGameOverRef.current = false
     setTarget(getRandomWord())
     setGuesses([])
     setCurrentGuess("")

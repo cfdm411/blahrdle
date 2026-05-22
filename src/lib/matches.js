@@ -109,88 +109,21 @@ export async function respondToMatch(matchId, accept, userId) {
   }
 }
 
-function pickWinner(m) {
-  const cPlayed = m.challenger_score !== null && m.challenger_score !== undefined
-  const oPlayed = m.opponent_score   !== null && m.opponent_score   !== undefined
-  if (!cPlayed && !oPlayed) return null
-  if (cPlayed && !oPlayed) return m.challenger_id
-  if (oPlayed && !cPlayed) return m.opponent_id
-
-  // Both played
-  const cSolved = !!m.challenger_solved
-  const oSolved = !!m.opponent_solved
-  if (cSolved && !oSolved) return m.challenger_id
-  if (oSolved && !cSolved) return m.opponent_id
-  if (m.challenger_score > m.opponent_score) return m.challenger_id
-  if (m.opponent_score   > m.challenger_score) return m.opponent_id
-  return null // draw
-}
-
-async function finalizeMatch(match) {
-  const winnerId = pickWinner(match)
-  const { data, error } = await supabase
-    .from('matches')
-    .update({ status: 'completed', winner_id: winnerId })
-    .eq('id', match.id)
-    .neq('status', 'completed')
-    .select('id')
+// Save the calling player's score and (if both have played) finalise the match.
+// Winner logic and match_wins crediting all happen atomically server-side.
+export async function saveMatchResult(match, _userId, score, solved) {
+  const { data, error } = await supabase.rpc('save_match_result', {
+    p_match_id: match.id,
+    p_score:    score,
+    p_solved:   solved,
+  })
   if (error) throw error
-  // Only credit the winner if this call actually performed the transition
-  // (guards against double-finalize when both players save concurrently).
-  if (data && data.length > 0 && winnerId) {
-    await supabase.rpc('award_match_win', { winner: winnerId })
-  }
+  return data   // null means no-op (already saved or match not accepted)
 }
 
-export async function saveMatchResult(match, userId, score, solved) {
-  const isChallenger = match.challenger_id === userId
-  const scoreCol = isChallenger ? 'challenger_score'  : 'opponent_score'
-  const fields   = isChallenger
-    ? { challenger_score: score, challenger_solved: solved }
-    : { opponent_score: score, opponent_solved: solved }
-
-  const { data: updated, error } = await supabase
-    .from('matches')
-    .update(fields)
-    .eq('id', match.id)
-    .eq('status', 'accepted')
-    .is(scoreCol, null)
-    .select(SELECT_FULL)
-    .maybeSingle()
-  if (error) throw error
-  if (!updated) {
-    // Either the match isn't accepted anymore or this player already saved.
-    // Treat as a no-op rather than corrupting state or double-finalizing.
-    return null
-  }
-
-  const bothPlayed =
-    updated.challenger_score !== null && updated.challenger_score !== undefined &&
-    updated.opponent_score   !== null && updated.opponent_score   !== undefined
-
-  if (bothPlayed) await finalizeMatch(updated)
-  return updated
-}
-
-// Lazy expiration: when the user opens the Match screen we tidy up any of
-// their own active matches that have run past expires_at.
+// Lazy expiration: called when the Match screen mounts.
+// Expired pending/accepted matches are tidied up server-side.
 export async function finalizeExpiredMatches(userId) {
-  const nowIso = new Date().toISOString()
-  const { data: expired } = await supabase
-    .from('matches')
-    .select(SELECT_FULL)
-    .or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`)
-    .in('status', ACTIVE_STATES)
-    .lt('expires_at', nowIso)
-
-  for (const m of (expired || [])) {
-    if (m.status === 'pending') {
-      // Never accepted — no winner.
-      await supabase.from('matches')
-        .update({ status: 'expired' })
-        .eq('id', m.id)
-    } else {
-      await finalizeMatch(m)
-    }
-  }
+  // errors are non-fatal — swallow silently so the rest of the screen loads
+  await supabase.rpc('process_expired_matches', { p_user_id: userId })
 }
