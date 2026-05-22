@@ -250,6 +250,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
   const savedRef = useRef(false)
   useEffect(() => {
     if (!gameOver) { savedRef.current = false; return }
+    if (revealingRow !== null) return
     if (savedRef.current || !auth.user) return
     savedRef.current = true
 
@@ -287,7 +288,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
         console.error('Failed to save game stats:', e)
       }
     })()
-  }, [gameOver, auth.user, target, attemptsUsed, won, totalScore, timeLeft, isMatch, match])
+  }, [gameOver, revealingRow, auth.user, target, attemptsUsed, won, totalScore, timeLeft, isMatch, match])
 
   useEffect(() => {
     document.body.className = theme
