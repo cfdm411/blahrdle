@@ -90,6 +90,7 @@ const Key = memo(function Key({ label, state, onPress, theme, accentCorrect, acc
   return (
     <button
       onClick={() => onPress(label)}
+      aria-label={label === "ENTER" ? "Enter" : label === "⌫" ? "Borrar" : undefined}
       style={{
         // fluid width/height: fills naturally on desktop (≥500 px), shrinks on mobile
         // formula: (keyboard-container-width − h-padding−16px − row1-gaps−45px) / 10 keys
@@ -247,6 +248,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
   const savedRef = useRef(false)
   useEffect(() => {
     if (!gameOver) { savedRef.current = false; return }
+    if (revealingRow !== null) return
     if (savedRef.current || !auth.user) return
     savedRef.current = true
 
@@ -284,7 +286,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
         console.error('Failed to save game stats:', e)
       }
     })()
-  }, [gameOver, auth.user, target, attemptsUsed, won, totalScore, timeLeft, isMatch, match])
+  }, [gameOver, revealingRow, auth.user, target, attemptsUsed, won, totalScore, timeLeft, isMatch, match])
 
   useEffect(() => {
     document.body.className = theme
@@ -348,6 +350,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 80, justifyContent: "flex-end" }}>
             <ScoreBadge label="Streak" value={myStreak} theme={theme} />
+            {auth.user && (
             <button
               onClick={auth.signOut}
               title="Log out"
@@ -362,6 +365,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
             >
               Log out
             </button>
+            )}
             <button
               onClick={() => setTweaksOpen(o => !o)}
               title="Settings"

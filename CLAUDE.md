@@ -47,15 +47,18 @@ Never skip the hook with `--no-verify` unless you have a specific reason. The ho
 | `src/hooks/useGameState.js` | All game state, scoring, timer, keyboard handler. Single source of truth for gameplay. Accepts `{ initialTarget, trackLocalScores }` options. |
 | `src/hooks/useAuth.js` | Supabase session, profile fetch, `signIn(usernameOrEmail, password)` / `signUp(email, username, password)` / `signOut`. Real email is stored in `profiles.email`; the Supabase auth identity stays as the synthesized `username@lordle.local`. |
 | `src/components/AuthScreen.jsx` | Login/register form + "Jugar como invitado" guest link. |
-| `src/components/HomeScreen.jsx` | Post-login dashboard: stats cards, Nueva Partida button, Match button with pending-challenge badge. |
+| `src/components/HomeScreen.jsx` | Post-login dashboard: Mis Stats / Ranking tabs, Nueva Partida button, Match button with pending-challenge badge. |
 | `src/components/MatchScreen.jsx` | Match lobby: player search, challenge/respond flow, sectioned match list, results. |
 | `src/components/TweaksPanel.jsx` | Draggable settings panel + `useTweaks` hook (persists to `localStorage` key `lordle_tweaks`). |
 | `src/lib/supabase.js` | Supabase client. URL + anon key hardcoded — fine because both are public values. |
-| `src/lib/gameLogic.js` | Pure functions: `evaluateGuess`, `computeGreenScore`, `computeBonus`, `WIN_BONUS`, `GREEN_POINTS`. |
+| `src/lib/gameLogic.js` | Pure functions: `evaluateGuess`, `computeGreenScore`, `computeBonus`, `getRandomWord`, `WIN_BONUS`, `GREEN_POINTS`. |
 | `src/lib/matches.js` | Match service layer — see Match system section below. |
 | `src/data/words.js` | Single canonical word list. `WORDS` is the source; `ANSWERS = WORDS`, `VALID_WORDS = new Set(WORDS)`. |
 | `src/index.css` | Global theme classes (`body.dark` / `body.light`) and all keyframes. |
-| `supabase_schema.sql` | DDL + RLS policies + `award_match_win` RPC. Run once in the Supabase SQL editor. |
+| `supabase_schema.sql` | Base DDL + RLS. Run once, then apply migrations below in order. |
+| `supabase_migration_security.sql` | Match RPCs (`save_match_result`, `process_expired_matches`), drops `award_match_win`, match update trigger. |
+| `supabase_leaderboard.sql` | Leaderboard RLS + FK for `player_summary` → `profiles` embed. |
+| `supabase_profiles_rls.sql` | Tightens profiles SELECT policies; drops open anon read policy. |
 
 ## Conventions to preserve
 
@@ -93,12 +96,15 @@ The keyframe uses CSS variables (`--pre-bg/border/color`, `--post-bg/border/colo
 
 ## Supabase
 
-Two manual setup steps that aren't in code:
+Manual setup (in order):
 
-1. Run `supabase_schema.sql` once in the Supabase SQL editor.
-2. **Disable email confirmation** in the Supabase dashboard: Auth → Providers → Email → toggle off "Confirm email". The app synthesizes emails as `username@lordle.local`, which can never receive a confirmation link — leaving this on blocks all logins.
+1. Run `supabase_schema.sql` in the Supabase SQL editor.
+2. Run `supabase_migration_security.sql`.
+3. Run `supabase_leaderboard.sql` (required for HomeScreen Ranking tab).
+4. Run `supabase_profiles_rls.sql`.
+5. **Disable email confirmation** in the Supabase dashboard: Auth → Providers → Email → toggle off "Confirm email". The app synthesizes emails as `username@lordle.local`, which can never receive a confirmation link — leaving this on blocks all logins.
 
-After each regular game ends, `App.jsx` inserts into `game_stats` and read-modify-writes `player_summary`. A `savedRef` flag guards against double-saves and resets when `gameOver` flips back to `false` (new game). The save effect catches errors and logs to console — failures are non-fatal for gameplay.
+After each regular game ends, `App.jsx` inserts into `game_stats` and read-modify-writes `player_summary`. A `savedRef` flag guards against double-saves and resets when `gameOver` flips back to `false` (new game). The save effect also waits until `revealingRow === null` so `totalScore` includes the last row's greens. The save effect catches errors and logs to console — failures are non-fatal for gameplay.
 
 The local `lordle_scores` localStorage key still drives the header's Wins/Lost/Streak counters — Supabase persistence is additive, not a replacement.
 
@@ -113,6 +119,7 @@ Clicking "Jugar como invitado" in `AuthScreen` sets `isGuest = true` in `App`. T
 - Shows "Guest" in the game header instead of a username
 - Hides the "Ir al inicio" button in the game-over CTA (guests have no home screen)
 - Shows a subtle banner: "Las estadísticas no se guardan en modo invitado" + "Registrarse →" link that calls `onGoLogin` (sets `isGuest = false`, unmounting Game and returning to AuthScreen)
+- Hides the header "Log out" button when `auth.user` is null (guest mode)
 
 ## Match system
 
@@ -129,10 +136,6 @@ The `matches` table (in `supabase_schema.sql`) has:
 
 `player_summary` has a `match_wins integer default 0` column.
 
-### RPC: `award_match_win(winner uuid)`
-
-Because RLS prevents a player from updating another player's `player_summary` row, finalization calls this SECURITY DEFINER function via `supabase.rpc('award_match_win', { winner: winnerId })`. It does an atomic upsert on `player_summary.match_wins`. Granted only to `authenticated` role.
-
 ### `src/lib/matches.js` — service functions
 
 | Function | Description |
@@ -142,10 +145,10 @@ Because RLS prevents a player from updating another player's `player_summary` ro
 | `countPendingReceived(userId)` | Count for the HomeScreen badge |
 | `createMatch(challengerId, opponentId)` | Validates: no self-challenge, ≤3 active received by opponent, no existing active match between pair. Picks a random word, sets `expires_at = now + 24h`. |
 | `respondToMatch(matchId, accept, userId)` | Sets status to `accepted` or `rejected`. Scoped to `status='pending' AND opponent_id=userId` so the challenger cannot accept their own match and a status flip cannot regress. Throws if no row matched. |
-| `saveMatchResult(match, userId, score, solved)` | Writes the calling player's score/solved columns. Filtered to `status='accepted'` AND the player's score column still null — returns `null` on no-op rather than corrupting state or double-finalizing. If both have now played, calls `finalizeMatch`. |
-| `finalizeExpiredMatches(userId)` | Lazy cleanup on MatchScreen mount — marks expired pending matches as `expired`, finalizes accepted ones. `finalizeMatch` is idempotent (`.neq('status','completed')`), safe to invoke concurrently. |
+| `saveMatchResult(match, userId, score, solved)` | Calls `save_match_result` RPC. Returns `null` on no-op (already saved / not accepted). Finalization + `match_wins` credit happen server-side when both players have submitted. |
+| `finalizeExpiredMatches(userId)` | Calls `process_expired_matches` RPC on MatchScreen mount. Errors are non-fatal. |
 
-### Winner logic (`pickWinner` in matches.js)
+### Winner logic (`save_match_result` RPC in `supabase_migration_security.sql`)
 
 1. If only one player has played → that player wins
 2. If both played: solved beats unsolved; if both solved or both unsolved → higher score wins; if equal → draw (`winner_id = null`)
@@ -175,11 +178,13 @@ Tests live in `src/test/`. Run with `npm test`.
 |---|---|
 | `gameLogic.test.js` | `evaluateGuess` — all correct, all absent, present, duplicate-letter handling |
 | `scoring.test.js` | `computeGreenScore`, `computeBonus`, `WIN_BONUS` table, boundary values |
-| `timer.test.js` | Countdown, floor at 0, loss trigger, stops after game over (fake timers) |
+| `timer.test.js` | Countdown, floor at 0, loss trigger, timer pause on winning submit, stops after game over (fake timers) |
 | `words.test.js` | All words 5 letters, uppercase, ANSWERS/VALID_WORDS parity |
 | `auth.test.js` | `signUp` (success, `@`-in-username, duplicate email, whitespace trim) and `signIn` (username path, email→username resolution, wrong password, unknown email). Mocks `src/lib/supabase` with a chainable query-builder stub. |
+| `gameState.test.js` | Win/6th-guess input blocking during reveal; non-terminal reveal allows input |
+| `matches.test.js` | `searchProfiles`, `createMatch`, `respondToMatch`, `saveMatchResult`, `finalizeExpiredMatches` (mocked Supabase) |
 
-40 tests across 5 files at last count.
+58 tests across 7 files at last count.
 
 ## Accessibility
 
@@ -192,7 +197,7 @@ Tests live in `src/test/`. Run with `npm test`.
 `npm run lint` currently reports **9 deferred errors**, all flagged for a future cleanup session — do not silently "fix" these without asking:
 
 - `react-hooks/refs` ×3 in `src/components/TweaksPanel.jsx:139` — reads `offsetRef.current` during render to position the panel. Needs to move to state or a CSS variable updated in an effect.
-- `react-hooks/set-state-in-effect` ×4 in `useAuth.js:26`, `useGameState.js:134`, `MatchScreen.jsx:48,52` — React 19's compiler-aware lint flags effects that call `setState` in their body. Several of these are genuine external→React syncs (timer→loss, debounced search) and may be acceptable as-is.
+- `react-hooks/set-state-in-effect` ×4 in `useAuth.js:26`, `useGameState.js:156`, `MatchScreen.jsx:103,107` — React 19's compiler-aware lint flags effects that call `setState` in their body. Several of these are genuine external→React syncs (timer→loss, debounced search) and may be acceptable as-is.
 - `no-empty` ×1 in `TweaksPanel.jsx` — empty `catch {}` block.
 
 ## Output style
@@ -203,11 +208,22 @@ The user wants terse responses. Don't narrate intent before tool calls; don't su
 
 - T1a (FIXED): Reset corruption — pendingTimeoutsRef + clearPendingTimeouts()
   at top of resetGame; shakingRow, toast, revealingRow cleared on reset.
-- T1b (OPEN): Stacked reveals during active play — rapid back-to-back submits
-  still stack independent 1550ms timers within one game. greenScore can
-  desync mid-game before reset is ever triggered.
-- T7: Timer loss during a non-terminal reveal can save a low totalScore —
-  greenScore excludes the in-flight row's greens at save time.
-- M1: Schema/docs drift — supabase_schema.sql still references award_match_win;
-  live DB uses save_match_result + process_expired_matches. Runtime is correct;
-  risk is onboarding and future migrations from stale docs.
+- T1b (FIXED): Stacked reveal timers — `revealTimeoutRef` cancels previous 1550ms timer before scheduling a new one in `submitGuess`.
+- T7 (FIXED): Save effect in `App.jsx` waits for `revealingRow === null` before persisting stats.
+- M1: Schema/docs drift — `supabase_schema.sql` still references `award_match_win`;
+  live DB uses `save_match_result` + `process_expired_matches`. Runtime is correct;
+  risk is onboarding and future migrations from stale base schema file.
+
+## Known architecture debt
+
+- `App.jsx` (~660 lines) co-locates Tile, Key, Game UI, and routing. Intentional for now.
+- Game persistence (Supabase writes) lives in `App.jsx` useEffect, not a service layer.
+- `HomeScreen` queries Supabase directly for stats and ranking.
+- `TILE` exported from `useGameState.js`, not `gameLogic.js`.
+- `lordle_challenger` localStorage read in `App.jsx` (~233) — dead code, never written; remove before extending.
+
+## Known security decisions
+
+- Match scores and game stats are client-trusted (no server-side replay). Acceptable at current scale.
+- `profiles` RLS tightening in `supabase_profiles_rls.sql` — apply in production if not already done.
+- `createMatch` word chosen client-side; DB enforces `length(word) = 5` only.
