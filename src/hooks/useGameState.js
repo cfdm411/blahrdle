@@ -19,6 +19,7 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
   const [timerPaused, setTimerPaused]   = useState(false)
   const lossHandledRef = useRef(false)
   const pendingTimeoutsRef = useRef(new Set())
+  const revealTimeoutRef = useRef(null)
 
   const scheduleTimeout = useCallback((fn, ms) => {
     const id = setTimeout(() => {
@@ -113,8 +114,15 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
     const newGuesses = [...guesses, { word: currentGuess, states }]
 
     // last tile: delay 4×200=800ms + 700ms animation → done at 1500ms
+    if (revealTimeoutRef.current !== null) {
+      clearTimeout(revealTimeoutRef.current)
+      pendingTimeoutsRef.current.delete(revealTimeoutRef.current)
+    }
     setRevealingRow(guesses.length)
-    scheduleTimeout(() => setRevealingRow(null), 1550)
+    revealTimeoutRef.current = scheduleTimeout(() => {
+      revealTimeoutRef.current = null
+      setRevealingRow(null)
+    }, 1550)
     setGuesses(newGuesses)
     setCurrentGuess("")
 
