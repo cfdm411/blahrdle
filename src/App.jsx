@@ -90,6 +90,7 @@ const Key = memo(function Key({ label, state, onPress, theme, accentCorrect, acc
   return (
     <button
       onClick={() => onPress(label)}
+      aria-label={label === "ENTER" ? "Enter" : label === "⌫" ? "Borrar" : undefined}
       style={{
         // fluid width/height: fills naturally on desktop (≥500 px), shrinks on mobile
         // formula: (keyboard-container-width − h-padding−16px − row1-gaps−45px) / 10 keys
