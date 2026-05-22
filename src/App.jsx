@@ -350,6 +350,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 80, justifyContent: "flex-end" }}>
             <ScoreBadge label="Streak" value={myStreak} theme={theme} />
+            {auth.user && (
             <button
               onClick={auth.signOut}
               title="Log out"
@@ -364,6 +365,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
             >
               Log out
             </button>
+            )}
             <button
               onClick={() => setTweaksOpen(o => !o)}
               title="Settings"
