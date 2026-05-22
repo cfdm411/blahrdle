@@ -91,14 +91,20 @@ const Key = memo(function Key({ label, state, onPress, theme, accentCorrect, acc
     <button
       onClick={() => onPress(label)}
       style={{
-        minWidth: isWide ? 62 : 38,
-        height: 54,
+        // fluid width/height: fills naturally on desktop (≥500 px), shrinks on mobile
+        // formula: (keyboard-container-width − h-padding−16px − row1-gaps−45px) / 10 keys
+        width: isWide
+          ? "min(62px, calc((min(100vw, 500px) - 61px) / 10 * 1.63))"
+          : "min(38px, calc((min(100vw, 500px) - 61px) / 10))",
+        height: "min(54px, calc((min(100vw, 500px) - 61px) / 10 * 1.42))",
         padding: "0 6px",
         background: s.bg,
         color: s.color,
         border: `1.5px solid ${s.border || s.bg}`,
         borderRadius: 6,
-        fontSize: isWide ? 12 : 15,
+        fontSize: isWide
+          ? "clamp(9px,  calc((min(100vw, 500px) - 61px) / 10 * 0.316), 12px)"
+          : "clamp(11px, calc((min(100vw, 500px) - 61px) / 10 * 0.395), 15px)",
         fontWeight: 600,
         fontFamily: "'Outfit', sans-serif",
         cursor: "pointer",
@@ -318,7 +324,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
       <header style={{
         width: "100%",
         borderBottom: `1px solid ${isDark ? "#1e1e2e" : "#e5e7eb"}`,
-        padding: "0 24px",
+        padding: "0 8px",
       }}>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -332,8 +338,8 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
           </div>
 
           <div style={{ textAlign: "center" }}>
-            <div style={{
-              fontSize: 28, fontWeight: 900, letterSpacing: "0.24em",
+            <div className="header-title" style={{
+              fontWeight: 900,
               color: isDark ? "#e8e8f0" : "#1a1a2e",
               textTransform: "uppercase",
               lineHeight: 1,
@@ -347,6 +353,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
             <button
               onClick={auth.signOut}
               title="Log out"
+              className="header-logout"
               style={{
                 background: "transparent", border: "none", cursor: "pointer",
                 color: iconColor, padding: "4px 6px", display: "flex", alignItems: "center",
