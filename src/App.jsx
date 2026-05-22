@@ -229,8 +229,6 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
   const isMatch = !!match
   const [tweaksOpen, setTweaksOpen] = useState(false)
 
-  const [challengerName] = useState(() => localStorage.getItem("lordle_challenger") || "")
-
   const {
     target, gameOver, won,
     shakingRow, toast, revealingRow, timeLeft,
@@ -388,13 +386,11 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
           <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", color: isDark ? "#c8c8e0" : "#374151" }}>
             {isGuest ? 'Guest' : (auth.profile?.username || '…')}
           </span>
-          {(isMatch || challengerName) && (
+          {isMatch && (
             <>
               <span style={{ fontSize: 11, color: isDark ? "#3a3a52" : "#d1d5db", letterSpacing: "0.06em" }}>vs</span>
               <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", color: isDark ? "#7a7a98" : "#6b7280" }}>
-                {isMatch
-                  ? (match.challenger_id === auth.user.id ? match.opponent?.username : match.challenger?.username)
-                  : challengerName}
+                {match.challenger_id === auth.user.id ? match.opponent?.username : match.challenger?.username}
               </span>
             </>
           )}
