@@ -11,10 +11,22 @@ export function useAuth() {
 
   // Hydrate session + subscribe to auth changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          console.error('Failed to get session:', error)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+        setUser(session?.user ?? null)
+        setLoading(false)
+      })
+      .catch((e) => {
+        console.error('Failed to get session:', e)
+        setUser(null)
+        setLoading(false)
+      })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
     })
