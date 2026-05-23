@@ -23,6 +23,7 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
   const isDark = theme === 'dark'
   const [tab, setTab] = useState('stats')
   const [stats, setStats] = useState(null)
+  const [statsError, setStatsError] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [ranking, setRanking] = useState([])
   const [rankingLoading, setRankingLoading] = useState(false)
@@ -30,13 +31,21 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
 
   useEffect(() => {
     if (!auth.user) return
+    let cancelled = false
+    setStatsError(false)
     supabase
       .from('player_summary')
       .select('total_games, total_wins, best_score, current_streak, match_wins')
       .eq('user_id', auth.user.id)
       .maybeSingle()
-      .then(({ data }) => setStats(data || {}))
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) { setStatsError(true); return }
+        setStats(data || {})
+      })
+      .catch(() => { if (!cancelled) setStatsError(true) })
     countPendingReceived(auth.user.id).then(setPendingCount)
+    return () => { cancelled = true }
   }, [auth.user])
 
   useEffect(() => {
@@ -109,7 +118,11 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
         <div style={{ fontSize: 12, color: dimColor, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
           Bienvenido
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.04em' }}>
+        <div style={{
+          fontSize: 22, fontWeight: 700, letterSpacing: '0.04em',
+          maxWidth: 340, width: '100%',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
           {auth.profile?.username || '…'}
         </div>
       </div>
@@ -124,7 +137,25 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
         </button>
       </div>
 
-      {tab === 'stats' && (
+      {tab === 'stats' && statsError && (
+        <div style={{
+          background: cardBg,
+          border: `1px solid ${cardBorder}`,
+          borderRadius: 10,
+          padding: '24px 12px',
+          textAlign: 'center',
+          fontSize: 12,
+          color: '#f87171',
+          letterSpacing: '0.04em',
+          width: '100%',
+          maxWidth: 340,
+        }}>
+          No se pudieron cargar tus estadísticas
+        </div>
+      )}
+
+      {tab === 'stats' && !statsError && (
+        <>
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
           width: '100%', maxWidth: 340,
@@ -153,6 +184,15 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
             </div>
           ))}
         </div>
+        {stats && [stats.total_games, stats.total_wins, stats.best_score, stats.current_streak, stats.match_wins].every(v => !v) && (
+          <p style={{
+            fontSize: 12, color: dimColor, textAlign: 'center',
+            letterSpacing: '0.04em', margin: '-4px 0 0', maxWidth: 340, width: '100%',
+          }}>
+            ¡Juega tu primera partida para ver tus estadísticas!
+          </p>
+        )}
+        </>
       )}
 
       {tab === 'ranking' && (

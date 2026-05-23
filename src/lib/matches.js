@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getRandomWord } from './gameLogic'
+import { throwIfSupabaseError } from './supabaseHelpers'
 
 const ACTIVE_STATES = ['pending', 'accepted']
 const MATCH_DURATION_MS = 24 * 60 * 60 * 1000
@@ -52,24 +53,26 @@ export async function createMatch(challengerId, opponentId) {
   }
 
   // Recipient already has too many active matches?
-  const { count: activeCount } = await supabase
+  const activeCountResult = await supabase
     .from('matches')
     .select('id', { count: 'exact', head: true })
     .eq('opponent_id', opponentId)
     .in('status', ACTIVE_STATES)
-  if ((activeCount || 0) >= MAX_ACTIVE_RECEIVED) {
+  throwIfSupabaseError(activeCountResult)
+  if ((activeCountResult.count || 0) >= MAX_ACTIVE_RECEIVED) {
     throw new Error('El oponente tiene muchos retos activos')
   }
 
   // Already an active match between these two players (in either direction)?
   const orFilter = `and(challenger_id.eq.${challengerId},opponent_id.eq.${opponentId}),and(challenger_id.eq.${opponentId},opponent_id.eq.${challengerId})`
-  const { data: existing } = await supabase
+  const existingResult = await supabase
     .from('matches')
     .select('id')
     .or(orFilter)
     .in('status', ACTIVE_STATES)
     .limit(1)
-  if (existing && existing.length > 0) {
+  throwIfSupabaseError(existingResult)
+  if (existingResult.data && existingResult.data.length > 0) {
     throw new Error('Ya tienes un reto activo con este jugador.')
   }
 

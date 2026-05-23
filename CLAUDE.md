@@ -48,11 +48,12 @@ Never skip the hook with `--no-verify` unless you have a specific reason. The ho
 | `src/hooks/useAuth.js` | Supabase session, profile fetch, `signIn(usernameOrEmail, password)` / `signUp(email, username, password)` / `signOut`. Real email is stored in `profiles.email`; the Supabase auth identity stays as the synthesized `username@lordle.local`. |
 | `src/components/AuthScreen.jsx` | Login/register form + "Jugar como invitado" guest link. |
 | `src/components/HomeScreen.jsx` | Post-login dashboard: Mis Stats / Ranking tabs, Nueva Partida button, Match button with pending-challenge badge. |
-| `src/components/MatchScreen.jsx` | Match lobby: player search, challenge/respond flow, sectioned match list, results. |
+| `src/components/MatchScreen.jsx` | Match lobby: player search, challenge/respond flow, sectioned match list (Recibidos / Listos / Esperando / Finalizando / Resultados). |
 | `src/components/TweaksPanel.jsx` | Draggable settings panel + `useTweaks` hook (persists to `localStorage` key `lordle_tweaks`). |
 | `src/lib/supabase.js` | Supabase client. URL + anon key hardcoded — fine because both are public values. |
 | `src/lib/gameLogic.js` | Pure functions: `evaluateGuess`, `computeGreenScore`, `computeBonus`, `getRandomWord`, `WIN_BONUS`, `GREEN_POINTS`. |
 | `src/lib/matches.js` | Match service layer — see Match system section below. |
+| `src/lib/supabaseHelpers.js` | `throwIfSupabaseError` — normalizes Supabase v2 `{ data, error }` into thrown errors for save paths. |
 | `src/data/words.js` | Single canonical word list. `WORDS` is the source; `ANSWERS = WORDS`, `VALID_WORDS = new Set(WORDS)`. |
 | `src/index.css` | Global theme classes (`body.dark` / `body.light`) and all keyframes. |
 | `supabase_schema.sql` | Base DDL + RLS. Run once, then apply migrations below in order. |
@@ -93,6 +94,7 @@ The keyframe uses CSS variables (`--pre-bg/border/color`, `--post-bg/border/colo
 - **Login** accepts either the username or the real email. If the input contains `@`, `signIn` queries `profiles.email` to resolve the username, then signs in with the synthesized `username@lordle.local`.
 - `profiles.email` has a unique constraint plus a case-insensitive `unique index on lower(email)`. `signUp` translates Postgres `23505` on email into "An account with this email already exists".
 - Existing accounts created before the email field was added have `profiles.email = username@lordle.local`. Email login for those works only if the user types that synthesized address (harmless).
+- `getSession()` checks `{ error }` and has `.catch` — on failure sets `loading = false` and `user = null` so the app lands on AuthScreen instead of infinite "Loading…".
 
 ## Supabase
 
@@ -104,7 +106,7 @@ Manual setup (in order):
 4. Run `supabase_profiles_rls.sql`.
 5. **Disable email confirmation** in the Supabase dashboard: Auth → Providers → Email → toggle off "Confirm email". The app synthesizes emails as `username@lordle.local`, which can never receive a confirmation link — leaving this on blocks all logins.
 
-After each regular game ends, `App.jsx` inserts into `game_stats` and read-modify-writes `player_summary`. A `savedRef` flag guards against double-saves and resets when `gameOver` flips back to `false` (new game). The save effect also waits until `revealingRow === null` so `totalScore` includes the last row's greens. The save effect catches errors and logs to console — failures are non-fatal for gameplay.
+After each regular game ends, `App.jsx` inserts into `game_stats` and read-modify-writes `player_summary` (match games call `saveMatchResult` instead). Uses `throwIfSupabaseError` from `supabaseHelpers.js` on every Supabase call. `savedRef` is set **only after full success**; on failure it stays false (retry requires `gameOver` to flip false — new game). The save effect waits until `revealingRow === null` so `totalScore` includes the last row's greens. On failure: `console.error` + red banner (`Tus estadísticas no se guardaron`), auto-dismiss 2800ms. Gameplay continues either way.
 
 The local `lordle_scores` localStorage key still drives the header's Wins/Lost/Streak counters — Supabase persistence is additive, not a replacement.
 
@@ -170,6 +172,10 @@ The `matches` table (in `supabase_schema.sql`) has:
 
 In match mode, the regular `game_stats` / `player_summary` write is skipped; `saveMatchResult` is called instead. The "vs {opponent}" byline appears in the game header.
 
+### Match lobby buckets (`MatchScreen.jsx`)
+
+`pending` → Recibidos / Enviado · `accepted` + unplayed → Listos para jugar · `accepted` + I played only → Esperando · **`accepted` + both scored (finalize lag)** → **Finalizando** · `completed|expired|rejected` → Resultados.
+
 ## Testing
 
 Tests live in `src/test/`. Run with `npm test`.
@@ -183,8 +189,12 @@ Tests live in `src/test/`. Run with `npm test`.
 | `auth.test.js` | `signUp` (success, `@`-in-username, duplicate email, whitespace trim) and `signIn` (username path, email→username resolution, wrong password, unknown email). Mocks `src/lib/supabase` with a chainable query-builder stub. |
 | `gameState.test.js` | Win/6th-guess input blocking during reveal; non-terminal reveal allows input |
 | `matches.test.js` | `searchProfiles`, `createMatch`, `respondToMatch`, `saveMatchResult`, `finalizeExpiredMatches` (mocked Supabase) |
+| `gameStateGaps.test.js` | Timer/win race, double triggerLoss, reset mid-reveal, totalScore during timer-loss mid-reveal |
+| `authGaps.test.js` | Legacy email login, uppercase email, `@lordle.local` path, synthesized auth email normalization |
+| `matchesGaps.test.js` | `createMatch` expiry boundary, parallel `finalizeExpiredMatches` |
+| `appSave.test.jsx` | T7 — save deferred until reveal completes; full green score persisted |
 
-58 tests across 7 files at last count.
+71 tests across 11 files at last count.
 
 ## Accessibility
 
@@ -194,10 +204,10 @@ Tests live in `src/test/`. Run with `npm test`.
 
 ## ESLint
 
-`npm run lint` currently reports **9 deferred errors**, all flagged for a future cleanup session — do not silently "fix" these without asking:
+`npm run lint` currently reports **11 deferred errors**, all flagged for a future cleanup session — do not silently "fix" these without asking:
 
 - `react-hooks/refs` ×3 in `src/components/TweaksPanel.jsx:139` — reads `offsetRef.current` during render to position the panel. Needs to move to state or a CSS variable updated in an effect.
-- `react-hooks/set-state-in-effect` ×4 in `useAuth.js:26`, `useGameState.js:156`, `MatchScreen.jsx:103,107` — React 19's compiler-aware lint flags effects that call `setState` in their body. Several of these are genuine external→React syncs (timer→loss, debounced search) and may be acceptable as-is.
+- `react-hooks/set-state-in-effect` ×6 in `useAuth.js:41`, `useGameState.js:161`, `MatchScreen.jsx:103,107`, `HomeScreen.jsx:49`, `App.jsx:262` — React 19's compiler-aware lint flags effects that call `setState` in their body. Several of these are genuine external→React syncs (timer→loss, debounced search) and may be acceptable as-is.
 - `no-empty` ×1 in `TweaksPanel.jsx` — empty `catch {}` block.
 
 ## Output style
@@ -213,6 +223,7 @@ The user wants terse responses. Don't narrate intent before tool calls; don't su
 - M1: Schema/docs drift — `supabase_schema.sql` still references `award_match_win`;
   live DB uses `save_match_result` + `process_expired_matches`. Runtime is correct;
   risk is onboarding and future migrations from stale base schema file.
+- M2 (FIXED): Accepted matches with both scores but status still `accepted` (RPC finalize lag) were invisible in the lobby — now shown in **Finalizando** bucket.
 
 ## Known architecture debt
 
@@ -227,3 +238,12 @@ The user wants terse responses. Don't narrate intent before tool calls; don't su
 - Match scores and game stats are client-trusted (no server-side replay). Acceptable at current scale.
 - `profiles` RLS tightening in `supabase_profiles_rls.sql` — apply in production if not already done.
 - `createMatch` word chosen client-side; DB enforces `length(word) = 5` only.
+
+## Known test gaps
+
+Most items from the original gap list are now covered by `*Gaps.test.js` and `appSave.test.jsx`. Still open:
+
+- M1: Schema/docs drift — no integration test against live SQL files vs mocked RPCs.
+- HomeScreen stats fetch error UI (Ranking tab has error state; stats tab does not).
+- MatchScreen player-search failures (empty catch — indistinguishable from no results).
+- `createMatch` pre-insert queries that ignore `{ error }` in `matches.js`.

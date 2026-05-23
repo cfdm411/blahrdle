@@ -36,10 +36,11 @@ Lordle is a 5-letter word guessing game. You have up to 6 guesses and 10 minutes
 - **Home screen** — Mis Stats dashboard + Match Wins ranking tab (top 20 by `match_wins`)
 - **Timer** — 10-minute countdown; running out ends the game as a loss
 - **Scoring** — green-tile points + solve bonus, persisted to Supabase
-- **Match system** — async head-to-head duels on the same word (24h expiry)
+- **Match system** — async head-to-head duels on the same word (24h expiry); matches awaiting server finalization show as "Finalizando"
+- **Offline-aware saves** — failed stat persistence shows an in-game error banner instead of failing silently
 - **Settings panel** — dark/light mode, tile size, accent colours (persisted to `localStorage`)
 - **Accessible UI** — `lang="es"`, ARIA labels on all form inputs and icon-only buttons, WCAG AA color contrast
-- **Tests** — 58 Vitest tests across game logic, scoring, words, timer, auth, game state, and matches (Supabase mocked)
+- **Tests** — 71 Vitest tests across game logic, scoring, words, timer, auth, game state, matches, save flow, and documented gap coverage (Supabase mocked)
 - **Pre-commit hook** — husky runs `vitest run` automatically; failing tests block the commit
 
 ### PageSpeed Insights (production)
@@ -146,16 +147,21 @@ lordle/
 │   │   └── TweaksPanel.jsx    # Draggable settings panel + useTweaks hook
 │   ├── lib/
 │   │   ├── supabase.js        # Supabase client
+│   │   ├── supabaseHelpers.js # throwIfSupabaseError helper
 │   │   ├── gameLogic.js       # Pure functions: evaluateGuess, scoring, getRandomWord
 │   │   └── matches.js         # Match service: createMatch, respondToMatch, saveMatchResult, …
 │   ├── data/
 │   │   └── words.js           # WORDS array → ANSWERS + VALID_WORDS (Set)
 │   └── test/
 │       ├── setup.js
+│       ├── appSave.test.jsx
 │       ├── auth.test.js          # signUp / signIn with mocked Supabase
+│       ├── authGaps.test.js
 │       ├── gameState.test.js
+│       ├── gameStateGaps.test.js
 │       ├── gameLogic.test.js
 │       ├── matches.test.js
+│       ├── matchesGaps.test.js
 │       ├── scoring.test.js
 │       ├── timer.test.js
 │       └── words.test.js
