@@ -47,13 +47,13 @@ Never skip the hook with `--no-verify` unless you have a specific reason. The ho
 | `src/hooks/useGameState.js` | All game state, scoring, timer, keyboard handler. Single source of truth for gameplay. Accepts `{ initialTarget, trackLocalScores }` options. |
 | `src/hooks/useAuth.js` | Supabase session, profile fetch, `signIn(usernameOrEmail, password)` / `signUp(email, username, password)` / `signOut`. Real email is stored in `profiles.email`; the Supabase auth identity stays as the synthesized `username@lordle.local`. |
 | `src/components/AuthScreen.jsx` | Login/register form + "Jugar como invitado" guest link. |
-| `src/components/HomeScreen.jsx` | Post-login dashboard: Mis Stats / Ranking tabs, Nueva Partida button, Match button with pending-challenge badge. |
-| `src/components/MatchScreen.jsx` | Match lobby: player search, challenge/respond flow, sectioned match list (Recibidos / Listos / Esperando / Finalizando / Resultados). |
+| `src/components/HomeScreen.jsx` | Post-login dashboard: Mis Stats / Ranking tabs (each with error UI), new-user stats prompt, Nueva Partida + Match buttons with pending badge. |
+| `src/components/MatchScreen.jsx` | Match lobby: player search (empty + error states), challenge/respond flow, sectioned match list (Recibidos / Listos / Esperando / Finalizando / Resultados). Username ellipsis on cards. |
 | `src/components/TweaksPanel.jsx` | Draggable settings panel + `useTweaks` hook (persists to `localStorage` key `lordle_tweaks`). |
 | `src/lib/supabase.js` | Supabase client. URL + anon key hardcoded — fine because both are public values. |
 | `src/lib/gameLogic.js` | Pure functions: `evaluateGuess`, `computeGreenScore`, `computeBonus`, `getRandomWord`, `WIN_BONUS`, `GREEN_POINTS`. |
 | `src/lib/matches.js` | Match service layer — see Match system section below. |
-| `src/lib/supabaseHelpers.js` | `throwIfSupabaseError` — normalizes Supabase v2 `{ data, error }` into thrown errors for save paths. |
+| `src/lib/supabaseHelpers.js` | `throwIfSupabaseError` — normalizes Supabase v2 `{ data, error }` into thrown errors (game save + `createMatch` pre-insert checks). |
 | `src/data/words.js` | Single canonical word list. `WORDS` is the source; `ANSWERS = WORDS`, `VALID_WORDS = new Set(WORDS)`. |
 | `src/index.css` | Global theme classes (`body.dark` / `body.light`) and all keyframes. |
 | `supabase_schema.sql` | Base DDL + RLS. Run once, then apply migrations below in order. |
@@ -145,7 +145,7 @@ The `matches` table (in `supabase_schema.sql`) has:
 | `searchProfiles(query, userId)` | ilike search on `profiles.username`, excludes self, limit 10 |
 | `listMatches(userId)` | All matches involving this user, with joined challenger+opponent usernames, newest first |
 | `countPendingReceived(userId)` | Count for the HomeScreen badge |
-| `createMatch(challengerId, opponentId)` | Validates: no self-challenge, ≤3 active received by opponent, no existing active match between pair. Picks a random word, sets `expires_at = now + 24h`. |
+| `createMatch(challengerId, opponentId)` | Validates via `throwIfSupabaseError` on active-count and duplicate-pair pre-queries; no self-challenge, ≤3 active received, no duplicate active pair. Picks a random word, sets `expires_at = now + 24h`. |
 | `respondToMatch(matchId, accept, userId)` | Sets status to `accepted` or `rejected`. Scoped to `status='pending' AND opponent_id=userId` so the challenger cannot accept their own match and a status flip cannot regress. Throws if no row matched. |
 | `saveMatchResult(match, userId, score, solved)` | Calls `save_match_result` RPC. Returns `null` on no-op (already saved / not accepted). Finalization + `match_wins` credit happen server-side when both players have submitted. |
 | `finalizeExpiredMatches(userId)` | Calls `process_expired_matches` RPC on MatchScreen mount. Errors are non-fatal. |
@@ -204,10 +204,10 @@ Tests live in `src/test/`. Run with `npm test`.
 
 ## ESLint
 
-`npm run lint` currently reports **11 deferred errors**, all flagged for a future cleanup session — do not silently "fix" these without asking:
+`npm run lint` currently reports **12 deferred errors**, all flagged for a future cleanup session — do not silently "fix" these without asking:
 
 - `react-hooks/refs` ×3 in `src/components/TweaksPanel.jsx:139` — reads `offsetRef.current` during render to position the panel. Needs to move to state or a CSS variable updated in an effect.
-- `react-hooks/set-state-in-effect` ×6 in `useAuth.js:41`, `useGameState.js:161`, `MatchScreen.jsx:103,107`, `HomeScreen.jsx:49`, `App.jsx:262` — React 19's compiler-aware lint flags effects that call `setState` in their body. Several of these are genuine external→React syncs (timer→loss, debounced search) and may be acceptable as-is.
+- `react-hooks/set-state-in-effect` ×7 in `useAuth.js:41`, `useGameState.js:161`, `MatchScreen.jsx:111,115`, `HomeScreen.jsx:38,58`, `App.jsx:262` — React 19's compiler-aware lint flags effects that call `setState` in their body. Several of these are genuine external→React syncs (timer→loss, debounced search) and may be acceptable as-is.
 - `no-empty` ×1 in `TweaksPanel.jsx` — empty `catch {}` block.
 
 ## Output style
@@ -244,6 +244,3 @@ The user wants terse responses. Don't narrate intent before tool calls; don't su
 Most items from the original gap list are now covered by `*Gaps.test.js` and `appSave.test.jsx`. Still open:
 
 - M1: Schema/docs drift — no integration test against live SQL files vs mocked RPCs.
-- HomeScreen stats fetch error UI (Ranking tab has error state; stats tab does not).
-- MatchScreen player-search failures (empty catch — indistinguishable from no results).
-- `createMatch` pre-insert queries that ignore `{ error }` in `matches.js`.

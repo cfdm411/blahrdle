@@ -1,6 +1,7 @@
 import { memo, useState, useEffect, useRef } from 'react'
 import { useGameState, TILE } from './hooks/useGameState'
 import { useAuth } from './hooks/useAuth'
+import { useBrowserHistory } from './hooks/useBrowserHistory'
 import { AuthScreen } from './components/AuthScreen'
 import { HomeScreen } from './components/HomeScreen'
 import { MatchScreen } from './components/MatchScreen'
@@ -156,6 +157,16 @@ export default function App() {
   const [screen, setScreen] = useState('home')
   const [isGuest, setIsGuest] = useState(false)
   const [currentMatch, setCurrentMatch] = useState(null)
+
+  useBrowserHistory({
+    enabled: !auth.loading && (!!auth.user || isGuest),
+    screen,
+    isGuest,
+    currentMatch,
+    setScreen,
+    setCurrentMatch,
+    setIsGuest,
+  })
 
   if (auth.loading) {
     const isDark = tweaks.theme === 'dark'

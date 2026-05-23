@@ -33,10 +33,10 @@ Lordle is a 5-letter word guessing game. You have up to 6 guesses and 10 minutes
 
 - **Auth** — register with email + username + password; log in with **either email or username**
 - **Guest mode** — play without an account; no stats saved
-- **Home screen** — Mis Stats dashboard + Match Wins ranking tab (top 20 by `match_wins`)
+- **Home screen** — Mis Stats dashboard + Match Wins ranking tab (top 20 by `match_wins`); error feedback on failed loads; first-game prompt for new users
 - **Timer** — 10-minute countdown; running out ends the game as a loss
 - **Scoring** — green-tile points + solve bonus, persisted to Supabase
-- **Match system** — async head-to-head duels on the same word (24h expiry); matches awaiting server finalization show as "Finalizando"
+- **Match system** — async head-to-head duels on the same word (24h expiry); matches awaiting server finalization show as "Finalizando"; player search shows empty/error messages
 - **Offline-aware saves** — failed stat persistence shows an in-game error banner instead of failing silently
 - **Settings panel** — dark/light mode, tile size, accent colours (persisted to `localStorage`)
 - **Accessible UI** — `lang="es"`, ARIA labels on all form inputs and icon-only buttons, WCAG AA color contrast
@@ -143,7 +143,7 @@ lordle/
 │   ├── components/
 │   │   ├── AuthScreen.jsx     # Login/register form + guest link
 │   │   ├── HomeScreen.jsx     # Post-login dashboard: Mis Stats + Ranking tabs
-│   │   ├── MatchScreen.jsx    # Match lobby: search, challenge, accept/reject, results
+│   │   ├── MatchScreen.jsx    # Match lobby: search, challenge, accept/reject, Finalizando + results
 │   │   └── TweaksPanel.jsx    # Draggable settings panel + useTweaks hook
 │   ├── lib/
 │   │   ├── supabase.js        # Supabase client
