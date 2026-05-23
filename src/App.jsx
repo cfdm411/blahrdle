@@ -6,6 +6,9 @@ import { HomeScreen } from './components/HomeScreen'
 import { MatchScreen } from './components/MatchScreen'
 import { saveMatchResult } from './lib/matches'
 import { supabase } from './lib/supabase'
+import { throwIfSupabaseError } from './lib/supabaseHelpers'
+
+const SAVE_FAILED_MSG = 'Tus estadísticas no se guardaron'
 
 function formatTime(s) {
   const m = Math.floor(s / 60)
@@ -229,6 +232,8 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
   const isDark = theme === "dark"
   const isMatch = !!match
   const [tweaksOpen, setTweaksOpen] = useState(false)
+  const [saveError, setSaveError] = useState(null)
+  const saveErrorTimerRef = useRef(null)
 
   const [challengerName] = useState(() => localStorage.getItem("lordle_challenger") || "")
 
@@ -249,46 +254,66 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
   // Reset the saved-flag whenever a new game starts (gameOver flips to false).
   const savedRef = useRef(false)
   useEffect(() => {
-    if (!gameOver) { savedRef.current = false; return }
+    if (!gameOver) {
+      savedRef.current = false
+      setSaveError(null)
+      if (saveErrorTimerRef.current !== null) {
+        clearTimeout(saveErrorTimerRef.current)
+        saveErrorTimerRef.current = null
+      }
+      return
+    }
     if (revealingRow !== null) return
     if (savedRef.current || !auth.user) return
-    savedRef.current = true
 
     ;(async () => {
       try {
         if (isMatch) {
           await saveMatchResult(match, auth.user.id, totalScore, won)
-          return
+        } else {
+          throwIfSupabaseError(await supabase.from('game_stats').insert({
+            user_id: auth.user.id,
+            score: totalScore,
+            attempts_used: attemptsUsed,
+            word: target,
+            won,
+            time_remaining: timeLeft,
+          }))
+
+          const curResult = await supabase
+            .from('player_summary').select('*')
+            .eq('user_id', auth.user.id).maybeSingle()
+          throwIfSupabaseError(curResult)
+          const cur = curResult.data
+
+          const newStreak = won ? (cur?.current_streak || 0) + 1 : 0
+          throwIfSupabaseError(await supabase.from('player_summary').upsert({
+            user_id: auth.user.id,
+            total_games:    (cur?.total_games    || 0) + 1,
+            total_wins:     (cur?.total_wins     || 0) + (won ? 1 : 0),
+            total_points:   (cur?.total_points   || 0) + totalScore,
+            best_score:     Math.max(cur?.best_score  || 0, totalScore),
+            current_streak: newStreak,
+            max_streak:     Math.max(cur?.max_streak  || 0, newStreak),
+          }))
         }
-
-        await supabase.from('game_stats').insert({
-          user_id: auth.user.id,
-          score: totalScore,
-          attempts_used: attemptsUsed,
-          word: target,
-          won,
-          time_remaining: timeLeft,
-        })
-
-        const { data: cur } = await supabase
-          .from('player_summary').select('*')
-          .eq('user_id', auth.user.id).maybeSingle()
-
-        const newStreak = won ? (cur?.current_streak || 0) + 1 : 0
-        await supabase.from('player_summary').upsert({
-          user_id: auth.user.id,
-          total_games:    (cur?.total_games    || 0) + 1,
-          total_wins:     (cur?.total_wins     || 0) + (won ? 1 : 0),
-          total_points:   (cur?.total_points   || 0) + totalScore,
-          best_score:     Math.max(cur?.best_score  || 0, totalScore),
-          current_streak: newStreak,
-          max_streak:     Math.max(cur?.max_streak  || 0, newStreak),
-        })
+        savedRef.current = true
       } catch (e) {
         console.error('Failed to save game stats:', e)
+        savedRef.current = false
+        setSaveError(SAVE_FAILED_MSG)
+        if (saveErrorTimerRef.current !== null) clearTimeout(saveErrorTimerRef.current)
+        saveErrorTimerRef.current = setTimeout(() => {
+          saveErrorTimerRef.current = null
+          setSaveError(null)
+        }, 2800)
       }
     })()
   }, [gameOver, revealingRow, auth.user, target, attemptsUsed, won, totalScore, timeLeft, isMatch, match])
+
+  useEffect(() => () => {
+    if (saveErrorTimerRef.current !== null) clearTimeout(saveErrorTimerRef.current)
+  }, [])
 
   useEffect(() => {
     document.body.className = theme
@@ -404,6 +429,19 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
           )}
         </div>
       </header>
+
+      {saveError && (
+        <div style={{
+          width: "100%", maxWidth: 500, margin: "0 auto 12px",
+          padding: "10px 14px",
+          background: isDark ? "#3b1c1c" : "#fee2e2",
+          color: "#f87171",
+          border: `1px solid ${isDark ? "#7f1d1d" : "#fecaca"}`,
+          borderRadius: 8, fontSize: 12, letterSpacing: "0.04em",
+        }}>
+          {saveError}
+        </div>
+      )}
 
       {/* ── GRID ── */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 16px 0" }}>
