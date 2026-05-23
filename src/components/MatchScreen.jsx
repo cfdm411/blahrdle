@@ -150,6 +150,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
   const sent         = []
   const playable     = []
   const waitingMine  = [] // I played, opponent hasn't
+  const finalizing   = [] // both played, status still accepted (RPC lag)
   const completed    = []
 
   for (const m of matches) {
@@ -165,6 +166,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
     } else if (m.status === 'accepted') {
       if (!myPlayed) playable.push(m)
       else if (!oppPlayed) waitingMine.push(m)
+      else if (myPlayed && oppPlayed) finalizing.push(m)
     } else if (m.status === 'completed' || m.status === 'expired' || m.status === 'rejected') {
       completed.push(m)
     }
@@ -305,6 +307,31 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
                 <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Tu turno hecho</span>
               </Card>
             ))}
+          </Section>
+        )}
+
+        {!loading && finalizing.length > 0 && (
+          <Section title="Finalizando" count={finalizing.length} tokens={tokens}>
+            {finalizing.map(m => {
+              const iAmChallenger = m.challenger_id === userId
+              const myScore  = iAmChallenger ? m.challenger_score : m.opponent_score
+              const oppScore = iAmChallenger ? m.opponent_score   : m.challenger_score
+              return (
+                <Card key={m.id} tokens={tokens}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>vs {oppNameOf(m)}</span>
+                    <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
+                      Palabra: {m.word}
+                      {(myScore !== null || oppScore !== null) && ` · ${myScore ?? '—'} vs ${oppScore ?? '—'}`}
+                    </span>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
+                    textTransform: 'uppercase', color: subtle,
+                  }}>Finalizando…</span>
+                </Card>
+              )
+            })}
           </Section>
         )}
 
