@@ -43,9 +43,10 @@ Never skip the hook with `--no-verify` unless you have a specific reason. The ho
 
 | File | Owns |
 |---|---|
-| `src/App.jsx` | Auth gate, screen routing (`'home'` / `'match'` / `'game'`), presentational `Game` component. **No game logic here.** |
+| `src/App.jsx` | Auth gate, screen routing (`'home'` / `'match'` / `'game'`), `useBrowserHistory` wiring, presentational `Game` component. **No game logic here.** |
 | `src/hooks/useGameState.js` | All game state, scoring, timer, keyboard handler. Single source of truth for gameplay. Accepts `{ initialTarget, trackLocalScores }` options. |
 | `src/hooks/useAuth.js` | Supabase session, profile fetch, `signIn(usernameOrEmail, password)` / `signUp(email, username, password)` / `signOut`. Real email is stored in `profiles.email`; the Supabase auth identity stays as the synthesized `username@lordle.local`. |
+| `src/hooks/useBrowserHistory.js` | `popstate` + `history.pushState` layer mirroring `screen` / guest / match depth. Does not replace existing `setScreen` callbacks — adds history push/pop on top. |
 | `src/components/AuthScreen.jsx` | Login/register form + "Jugar como invitado" guest link. |
 | `src/components/HomeScreen.jsx` | Post-login dashboard: Mis Stats / Ranking tabs (each with error UI), new-user stats prompt, Nueva Partida + Match buttons with pending badge. |
 | `src/components/MatchScreen.jsx` | Match lobby: player search (empty + error states), challenge/respond flow, sectioned match list (Recibidos / Listos / Esperando / Finalizando / Resultados). Username ellipsis on cards. |
@@ -121,6 +122,7 @@ Clicking "Jugar como invitado" in `AuthScreen` sets `isGuest = true` in `App`. T
 - Shows "Guest" in the game header instead of a username
 - Hides the "Ir al inicio" button in the game-over CTA (guests have no home screen)
 - Shows a subtle banner: "Las estadísticas no se guardan en modo invitado" + "Registrarse →" link that calls `onGoLogin` (sets `isGuest = false`, unmounting Game and returning to AuthScreen)
+- Browser back from guest game → AuthScreen (same as `onGoLogin` via `useBrowserHistory`)
 - Hides the header "Log out" button when `auth.user` is null (guest mode)
 
 ## Match system
@@ -172,6 +174,14 @@ The `matches` table (in `supabase_schema.sql`) has:
 
 In match mode, the regular `game_stats` / `player_summary` write is skipped; `saveMatchResult` is called instead. The "vs {opponent}" byline appears in the game header.
 
+### Browser back (`useBrowserHistory.js`)
+
+Enabled when `!auth.loading && (auth.user || isGuest)`. No React Router — history entries carry `{ lordle: true, screen, isGuest, inMatchGame }`.
+
+- **Forward `pushState`:** home→match, home→game, match→game; guest entry pushes `{ isGuest: true, screen: 'game' }`. Logged-in mount seeds with `replaceState` → home.
+- **`popstate` (from current React state via ref):** game + `currentMatch` → match (clear match); game → home; match → home; guest game → `setIsGuest(false)` (AuthScreen); home → re-`pushState` (stay in app, never navigate away).
+- **In-app back buttons unchanged** — backward UI transitions (`onBack`, `onGoHome`, `onMatchDone`, guest `onGoLogin`) still call the same `setState` handlers; the transition effect detects backward moves and calls `history.back()` with `syncingHistoryRef` so the resulting `popstate` is not double-handled.
+
 ### Match lobby buckets (`MatchScreen.jsx`)
 
 `pending` → Recibidos / Enviado · `accepted` + unplayed → Listos para jugar · `accepted` + I played only → Esperando · **`accepted` + both scored (finalize lag)** → **Finalizando** · `completed|expired|rejected` → Resultados.
@@ -204,11 +214,14 @@ Tests live in `src/test/`. Run with `npm test`.
 
 ## ESLint
 
-`npm run lint` currently reports **12 deferred errors**, all flagged for a future cleanup session — do not silently "fix" these without asking:
+`npm run lint` currently reports **15 deferred errors**, all flagged for a future cleanup session — do not silently "fix" these without asking:
 
 - `react-hooks/refs` ×3 in `src/components/TweaksPanel.jsx:139` — reads `offsetRef.current` during render to position the panel. Needs to move to state or a CSS variable updated in an effect.
+- `react-hooks/refs` ×1 in `useBrowserHistory.js:42` — `navRef.current = …` during render so `popstate` reads the latest nav snapshot.
 - `react-hooks/set-state-in-effect` ×7 in `useAuth.js:41`, `useGameState.js:161`, `MatchScreen.jsx:111,115`, `HomeScreen.jsx:38,58`, `App.jsx:262` — React 19's compiler-aware lint flags effects that call `setState` in their body. Several of these are genuine external→React syncs (timer→loss, debounced search) and may be acceptable as-is.
 - `no-empty` ×1 in `TweaksPanel.jsx` — empty `catch {}` block.
+- `no-unused-vars` ×1 in `appSave.test.jsx` — unused `React` import.
+- `no-dupe-keys` ×1 in `matchesGaps.test.js` — duplicate `in` key in mock stub.
 
 ## Output style
 

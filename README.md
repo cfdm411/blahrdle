@@ -37,6 +37,7 @@ Lordle is a 5-letter word guessing game. You have up to 6 guesses and 10 minutes
 - **Timer** — 10-minute countdown; running out ends the game as a loss
 - **Scoring** — green-tile points + solve bonus, persisted to Supabase
 - **Match system** — async head-to-head duels on the same word (24h expiry); matches awaiting server finalization show as "Finalizando"; player search shows empty/error messages
+- **Browser back** — hardware/software back navigates home ↔ match ↔ game (guest back → login screen) without leaving the app
 - **Offline-aware saves** — failed stat persistence shows an in-game error banner instead of failing silently
 - **Settings panel** — dark/light mode, tile size, accent colours (persisted to `localStorage`)
 - **Accessible UI** — `lang="es"`, ARIA labels on all form inputs and icon-only buttons, WCAG AA color contrast
@@ -139,7 +140,8 @@ lordle/
 │   ├── index.css              # Global theme classes + keyframe animations
 │   ├── hooks/
 │   │   ├── useGameState.js    # All game logic: state, scoring, timer, keyboard
-│   │   └── useAuth.js         # Supabase session, signIn/signUp/signOut
+│   │   ├── useAuth.js         # Supabase session, signIn/signUp/signOut
+│   │   └── useBrowserHistory.js  # popstate history layer for screen routing
 │   ├── components/
 │   │   ├── AuthScreen.jsx     # Login/register form + guest link
 │   │   ├── HomeScreen.jsx     # Post-login dashboard: Mis Stats + Ranking tabs
