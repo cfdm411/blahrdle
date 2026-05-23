@@ -109,7 +109,11 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
         <div style={{ fontSize: 12, color: dimColor, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
           Bienvenido
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.04em' }}>
+        <div style={{
+          fontSize: 22, fontWeight: 700, letterSpacing: '0.04em',
+          maxWidth: 340, width: '100%',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
           {auth.profile?.username || '…'}
         </div>
       </div>
@@ -125,6 +129,7 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
       </div>
 
       {tab === 'stats' && (
+        <>
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
           width: '100%', maxWidth: 340,
@@ -153,6 +158,15 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
             </div>
           ))}
         </div>
+        {stats && [stats.total_games, stats.total_wins, stats.best_score, stats.current_streak, stats.match_wins].every(v => !v) && (
+          <p style={{
+            fontSize: 12, color: dimColor, textAlign: 'center',
+            letterSpacing: '0.04em', margin: '-4px 0 0', maxWidth: 340, width: '100%',
+          }}>
+            ¡Juega tu primera partida para ver tus estadísticas!
+          </p>
+        )}
+        </>
       )}
 
       {tab === 'ranking' && (

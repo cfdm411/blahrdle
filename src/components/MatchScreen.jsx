@@ -73,6 +73,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
   const [matches, setMatches] = useState([])
   const [query, setQuery]     = useState('')
   const [results, setResults] = useState([])
+  const [searchSettled, setSearchSettled] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy]       = useState(false)
   const [error, setError]     = useState(null)
@@ -86,6 +87,9 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
   const dimColor   = isDark ? '#7a7a98' : '#6b7280'
   const subtle     = isDark ? '#888888' : '#6b7280'
   const tokens = { isDark, cardBg, cardBorder, textColor, dimColor, subtle }
+  const nameEllipsis = {
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -104,10 +108,12 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
 
   // Debounced search
   useEffect(() => {
-    if (!query || query.trim().length < 2) { setResults([]); return }
+    if (!query || query.trim().length < 2) { setResults([]); setSearchSettled(false); return }
+    setSearchSettled(false)
     const t = setTimeout(async () => {
       try { setResults(await searchProfiles(query, userId)) }
       catch { setResults([]) }
+      finally { setSearchSettled(true) }
     }, 250)
     return () => clearTimeout(t)
   }, [query, userId])
@@ -237,10 +243,15 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {results.map(p => (
               <Card key={p.id} tokens={tokens}>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{p.username}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, ...nameEllipsis, flex: 1 }}>{p.username}</span>
                 <SmallButton label="Retar" primary onClick={() => challenge(p)} disabled={busy} tokens={tokens} />
               </Card>
             ))}
+          </div>
+        )}
+        {searchSettled && query.trim().length >= 2 && results.length === 0 && (
+          <div style={{ marginTop: 8, fontSize: 12, color: dimColor, letterSpacing: '0.04em' }}>
+            No se encontraron jugadores
           </div>
         )}
       </div>
@@ -252,8 +263,8 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
           <Section title="Recibidos" count={received.length} tokens={tokens}>
             {received.map(m => (
               <Card key={m.id} tokens={tokens}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{oppNameOf(m)}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, ...nameEllipsis }}>{oppNameOf(m)}</span>
                   <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
                     Expira en {timeLeftLabel(m.expires_at)}
                   </span>
@@ -271,8 +282,8 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
           <Section title="Listos para jugar" count={playable.length} tokens={tokens}>
             {playable.map(m => (
               <Card key={m.id} tokens={tokens} style={{ cursor: 'pointer' }}>
-                <div onClick={() => onPlayMatch(m)} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, cursor: 'pointer' }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>vs {oppNameOf(m)}</span>
+                <div onClick={() => onPlayMatch(m)} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2, cursor: 'pointer' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, ...nameEllipsis }}>vs {oppNameOf(m)}</span>
                   <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
                     Expira en {timeLeftLabel(m.expires_at)}
                   </span>
@@ -287,8 +298,8 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
           <Section title="Esperando" tokens={tokens}>
             {sent.map(m => (
               <Card key={m.id} tokens={tokens}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{oppNameOf(m)}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, ...nameEllipsis }}>{oppNameOf(m)}</span>
                   <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
                     Pendiente de aceptar · {timeLeftLabel(m.expires_at)}
                   </span>
@@ -298,8 +309,8 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
             ))}
             {waitingMine.map(m => (
               <Card key={m.id} tokens={tokens}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>vs {oppNameOf(m)}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, ...nameEllipsis }}>vs {oppNameOf(m)}</span>
                   <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
                     Esperando rival · {timeLeftLabel(m.expires_at)}
                   </span>
@@ -318,8 +329,8 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
               const oppScore = iAmChallenger ? m.opponent_score   : m.challenger_score
               return (
                 <Card key={m.id} tokens={tokens}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>vs {oppNameOf(m)}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, ...nameEllipsis }}>vs {oppNameOf(m)}</span>
                     <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
                       Palabra: {m.word}
                       {(myScore !== null || oppScore !== null) && ` · ${myScore ?? '—'} vs ${oppScore ?? '—'}`}
@@ -353,8 +364,8 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
                 : youWon ? '#4ade80' : isDraw ? subtle : '#f87171'
               return (
                 <Card key={m.id} tokens={tokens}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>vs {oppNameOf(m)}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, ...nameEllipsis }}>vs {oppNameOf(m)}</span>
                     <span style={{ fontSize: 10, color: subtle, letterSpacing: '0.04em' }}>
                       Palabra: {m.word}
                       {(myScore !== null || oppScore !== null) && ` · ${myScore ?? '—'} vs ${oppScore ?? '—'}`}
