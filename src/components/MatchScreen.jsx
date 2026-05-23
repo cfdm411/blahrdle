@@ -74,6 +74,7 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
   const [query, setQuery]     = useState('')
   const [results, setResults] = useState([])
   const [searchSettled, setSearchSettled] = useState(false)
+  const [searchError, setSearchError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy]       = useState(false)
   const [error, setError]     = useState(null)
@@ -108,11 +109,18 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
 
   // Debounced search
   useEffect(() => {
-    if (!query || query.trim().length < 2) { setResults([]); setSearchSettled(false); return }
+    if (!query || query.trim().length < 2) { setResults([]); setSearchSettled(false); setSearchError(false); return }
     setSearchSettled(false)
+    setSearchError(false)
     const t = setTimeout(async () => {
-      try { setResults(await searchProfiles(query, userId)) }
-      catch { setResults([]) }
+      try {
+        setResults(await searchProfiles(query, userId))
+        setSearchError(false)
+      }
+      catch {
+        setResults([])
+        setSearchError(true)
+      }
       finally { setSearchSettled(true) }
     }, 250)
     return () => clearTimeout(t)
@@ -249,7 +257,12 @@ export function MatchScreen({ auth, theme, onBack, onPlayMatch }) {
             ))}
           </div>
         )}
-        {searchSettled && query.trim().length >= 2 && results.length === 0 && (
+        {searchSettled && query.trim().length >= 2 && searchError && (
+          <div style={{ marginTop: 8, fontSize: 12, color: dimColor, letterSpacing: '0.04em' }}>
+            Error al buscar jugadores
+          </div>
+        )}
+        {searchSettled && query.trim().length >= 2 && !searchError && results.length === 0 && (
           <div style={{ marginTop: 8, fontSize: 12, color: dimColor, letterSpacing: '0.04em' }}>
             No se encontraron jugadores
           </div>
