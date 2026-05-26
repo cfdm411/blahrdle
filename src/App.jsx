@@ -268,7 +268,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
   const {
     target, gameOver, won,
     shakingRow, toast, revealingRow, timeLeft,
-    myWins, myLosses, myStreak,
+    myWins, myLosses,
     greenScore, bonus, totalScore,
     attemptsUsed,
     letterStates, rows,
@@ -418,7 +418,6 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
           </div>
 
           <div className="header-side header-side-right">
-            <ScoreBadge label="Streak" value={myStreak} theme={theme} />
             {auth.user && (
             <button
               onClick={auth.signOut}
