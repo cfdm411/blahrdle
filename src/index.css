@@ -1,7 +1,16 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+:root {
+  --app-h: 100vh;
+}
+
+@supports (height: 100dvh) {
+  :root { --app-h: 100dvh; }
+}
+
 html, body {
   height: 100%;
+  height: var(--app-h);
   font-family: 'Outfit', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -23,6 +32,36 @@ body.dark {
 #root {
   width: 100%;
   min-height: 100%;
+  min-height: var(--app-h);
+}
+
+.game-shell {
+  width: 100%;
+  height: var(--app-h);
+  max-height: var(--app-h);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-grid-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px 0;
+}
+
+.game-keyboard-area {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 500px;
+  padding: 16px 8px max(24px, env(safe-area-inset-bottom, 0px));
 }
 
 @keyframes pop {
@@ -71,12 +110,67 @@ body.dark {
 .row-shake   { animation: shake      0.4s ease; }
 
 /* ── Responsive header ───────────────────────────────────────────────────────── */
+.header-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  max-width: 500px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.header-side {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-side-right {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.header-center {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+}
+
+.header-player-row {
+  flex-shrink: 0;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px 10px;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+  border-top: 1px solid transparent;
+}
+
+body.dark .header-player-row { border-top-color: #1e1e2e; }
+body.light .header-player-row { border-top-color: #e5e7eb; }
+
 .header-title {
   font-size: 28px;
   letter-spacing: 0.24em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-badge-value {
+  font-size: 22px;
 }
 
 @media (max-width: 420px) {
   .header-logout { display: none; }
   .header-title  { font-size: 22px; letter-spacing: 0.14em; }
+  .header-badge-value { font-size: 18px; }
 }

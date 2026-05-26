@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useRef } from 'react'
+import { memo, useState, useEffect, useRef, useMemo } from 'react'
 import { useGameState, TILE } from './hooks/useGameState'
 import { useAuth } from './hooks/useAuth'
 import { useBrowserHistory } from './hooks/useBrowserHistory'
@@ -31,6 +31,23 @@ const TWEAK_DEFAULTS = {
   accentCorrect: "#4ade80",
   accentPresent: "#facc15",
   tileSize: 62,
+}
+
+function estimateKeyboardHeight(vw) {
+  const keyH = Math.min(54, ((Math.min(vw, 500) - 61) / 10) * 1.42)
+  return 16 + 24 + 3 * keyH + 10
+}
+
+function computeEffectiveTileSize(configured, vw, vh, { isGuest, gameOver, saveError }) {
+  const widthCap = Math.floor((Math.min(vw, 500) - 32 - 16) / 5)
+  const reserved = 92
+    + estimateKeyboardHeight(vw)
+    + (gameOver ? 0 : 36)
+    + (isGuest ? 44 : 0)
+    + (saveError ? 46 : 0)
+    + 20
+  const heightCap = Math.floor((vh - reserved - 20) / 6)
+  return Math.max(48, Math.min(configured, widthCap, heightCap))
 }
 
 // ─── Tile ─────────────────────────────────────────────────────────────────────
@@ -130,7 +147,7 @@ function ScoreBadge({ label, value, theme }) {
   const isDark = theme === "dark"
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: isDark ? "#e8e8f0" : "#1a1a2e" }}>
+      <span className="header-badge-value" style={{ fontWeight: 800, letterSpacing: "-0.02em", color: isDark ? "#e8e8f0" : "#1a1a2e" }}>
         {value}
       </span>
       <span style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: isDark ? "#7a7a98" : "#6b7280" }}>
@@ -330,16 +347,34 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
     document.body.className = theme
   }, [theme])
 
-  const tileSize = tweaks.tileSize
-  const gap = Math.max(4, Math.round(tileSize * 0.07))
+  const [viewport, setViewport] = useState(() => ({
+    w: typeof window !== 'undefined' ? window.innerWidth : 500,
+    h: typeof window !== 'undefined' ? (window.visualViewport?.height ?? window.innerHeight) : 800,
+  }))
+
+  useEffect(() => {
+    const update = () => setViewport({
+      w: window.innerWidth,
+      h: window.visualViewport?.height ?? window.innerHeight,
+    })
+    update()
+    window.addEventListener('resize', update)
+    window.visualViewport?.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.visualViewport?.removeEventListener('resize', update)
+    }
+  }, [])
+
+  const effectiveTileSize = useMemo(
+    () => computeEffectiveTileSize(tweaks.tileSize, viewport.w, viewport.h, { isGuest, gameOver, saveError }),
+    [tweaks.tileSize, viewport, isGuest, gameOver, saveError],
+  )
+  const gap = Math.max(4, Math.round(effectiveTileSize * 0.07))
   const iconColor = isDark ? "#7a7a98" : "#6b7280"
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
+    <div className="game-shell" style={{
       background: isDark ? "#12121e" : "#f7f7f2",
       userSelect: "none",
     }}>
@@ -361,21 +396,17 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
       {/* ── HEADER ── */}
       <header style={{
         width: "100%",
+        flexShrink: 0,
         borderBottom: `1px solid ${isDark ? "#1e1e2e" : "#e5e7eb"}`,
         padding: "0 8px",
       }}>
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          height: 56,
-          maxWidth: 500,
-          margin: "0 auto",
-        }}>
-          <div style={{ display: "flex", gap: 16, minWidth: 80 }}>
+        <div className="header-stats-row">
+          <div className="header-side">
             <ScoreBadge label="Wins" value={myWins} theme={theme} />
             <ScoreBadge label="Lost" value={myLosses} theme={theme} />
           </div>
 
-          <div style={{ textAlign: "center" }}>
+          <div className="header-center">
             <div className="header-title" style={{
               fontWeight: 900,
               color: isDark ? "#e8e8f0" : "#1a1a2e",
@@ -386,7 +417,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 80, justifyContent: "flex-end" }}>
+          <div className="header-side header-side-right">
             <ScoreBadge label="Streak" value={myStreak} theme={theme} />
             {auth.user && (
             <button
@@ -420,15 +451,13 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
         </div>
 
         {/* Player row */}
-        <div style={{
-          maxWidth: 500, margin: "0 auto",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          paddingBottom: 10, gap: 8, minWidth: 0, width: "100%",
-        }}>
+        <div className="header-player-row">
           <span style={{
             fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", color: isDark ? "#c8c8e0" : "#374151",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            maxWidth: isMatch || challengerName ? 140 : 280,
+            maxWidth: isMatch || challengerName ? "min(140px, 40vw)" : "100%",
+            flex: isMatch || challengerName ? "0 1 auto" : "1 1 auto",
+            minWidth: 0,
           }}>
             {isGuest ? 'Guest' : (auth.profile?.username || '…')}
           </span>
@@ -438,7 +467,9 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
               <span style={{
                 fontSize: 12, fontWeight: 500, letterSpacing: "0.06em", color: isDark ? "#7a7a98" : "#6b7280",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                maxWidth: 140,
+                maxWidth: "min(140px, 40vw)",
+                flex: "0 1 auto",
+                minWidth: 0,
               }}>
                 {isMatch
                   ? (match.challenger_id === auth.user.id ? match.opponent?.username : match.challenger?.username)
@@ -451,6 +482,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
 
       {saveError && (
         <div style={{
+          flexShrink: 0,
           width: "100%", maxWidth: 500, margin: "0 auto 12px",
           padding: "10px 14px",
           background: isDark ? "#3b1c1c" : "#fee2e2",
@@ -463,7 +495,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
       )}
 
       {/* ── GRID ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 16px 0" }}>
+      <div className="game-grid-area">
         <div style={{ display: "flex", flexDirection: "column", gap }}>
           {rows.map((row, rowIdx) => {
             const isRevealing = revealingRow === rowIdx
@@ -492,7 +524,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
                       theme={theme}
                       accentCorrect={tweaks.accentCorrect}
                       accentPresent={tweaks.accentPresent}
-                      size={tileSize}
+                      size={effectiveTileSize}
                       animClass={animClass}
                       delay={isRevealing ? colIdx * 200 : 0}
                       isRevealing={isRevealing}
@@ -641,6 +673,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
       {/* ── GUEST BANNER ── */}
       {isGuest && (
         <div style={{
+          flexShrink: 0,
           width: "100%", maxWidth: 500,
           padding: "10px 16px",
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -665,7 +698,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
       )}
 
       {/* ── KEYBOARD ── */}
-      <div style={{ padding: "16px 8px 24px", width: "100%", maxWidth: 500 }}>
+      <div className="game-keyboard-area">
         {KB_ROWS.map((row, ri) => (
           <div key={ri} style={{
             display: "flex", justifyContent: "center",
