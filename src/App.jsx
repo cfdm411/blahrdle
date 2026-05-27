@@ -265,8 +265,6 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
   const [saveError, setSaveError] = useState(null)
   const saveErrorTimerRef = useRef(null)
 
-  const [challengerName] = useState(() => localStorage.getItem("lordle_challenger") || "")
-
   const {
     target, gameOver, won,
     shakingRow, toast, revealingRow, timeLeft,
@@ -453,13 +451,13 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
           <span style={{
             fontSize: 12, fontWeight: 600, letterSpacing: "0.06em", color: isDark ? "#c8c8e0" : "#374151",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            maxWidth: isMatch || challengerName ? "min(140px, 40vw)" : "100%",
-            flex: isMatch || challengerName ? "0 1 auto" : "1 1 auto",
+            maxWidth: isMatch ? "min(140px, 40vw)" : "100%",
+            flex: isMatch ? "0 1 auto" : "1 1 auto",
             minWidth: 0,
           }}>
             {isGuest ? 'Guest' : (auth.profile?.username || '…')}
           </span>
-          {(isMatch || challengerName) && (
+          {isMatch && (
             <>
               <span style={{ fontSize: 11, color: isDark ? "#3a3a52" : "#d1d5db", letterSpacing: "0.06em", flexShrink: 0 }}>vs</span>
               <span style={{
@@ -469,9 +467,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
                 flex: "0 1 auto",
                 minWidth: 0,
               }}>
-                {isMatch
-                  ? (match.challenger_id === auth.user.id ? match.opponent?.username : match.challenger?.username)
-                  : challengerName}
+                {match.challenger_id === auth.user.id ? match.opponent?.username : match.challenger?.username}
               </span>
             </>
           )}
