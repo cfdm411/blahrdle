@@ -8,6 +8,8 @@ import { MatchScreen } from './components/MatchScreen'
 import { saveMatchResult } from './lib/matches'
 import { supabase } from './lib/supabase'
 import { throwIfSupabaseError } from './lib/supabaseHelpers'
+import logoLight from './assets/logo-light.svg'
+import logoDark from './assets/logo-dark.svg'
 
 const SAVE_FAILED_MSG = 'Tus estadísticas no se guardaron'
 
@@ -407,14 +409,11 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
           </div>
 
           <div className="header-center">
-            <div className="header-title" style={{
-              fontWeight: 900,
-              color: isDark ? "#e8e8f0" : "#1a1a2e",
-              textTransform: "uppercase",
-              lineHeight: 1,
-            }}>
-              LORDLE
-            </div>
+            <img
+              src={isDark ? logoDark : logoLight}
+              alt="Blahrdle"
+              height={28}
+            />
           </div>
 
           <div className="header-side header-side-right">

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { countPendingReceived } from '../lib/matches'
+import logoLight from '../assets/logo-light.svg'
+import logoDark from '../assets/logo-dark.svg'
 
 async function fetchMatchRanking() {
   const { data, error } = await supabase
@@ -106,12 +108,11 @@ export function HomeScreen({ auth, theme, onPlay, onOpenMatches }) {
       fontFamily: "'Outfit', sans-serif",
     }}>
       {/* Logo */}
-      <div style={{
-        fontSize: 40, fontWeight: 900, letterSpacing: '0.24em',
-        textTransform: 'uppercase', lineHeight: 1,
-      }}>
-        LORDLE
-      </div>
+      <img
+        src={isDark ? logoDark : logoLight}
+        alt="Blahrdle"
+        height={32}
+      />
 
       {/* Welcome */}
       <div style={{ textAlign: 'center', lineHeight: 1.4 }}>

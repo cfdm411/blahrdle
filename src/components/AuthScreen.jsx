@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import logoLight from '../assets/logo-light.svg'
+import logoDark from '../assets/logo-dark.svg'
 
 export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
   const isDark = theme === 'dark'
@@ -58,11 +60,12 @@ export function AuthScreen({ theme, onSignIn, onSignUp, onGuest }) {
       padding: 24,
     }}>
       <form onSubmit={submit} style={{ width: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{
-          fontSize: 32, fontWeight: 900, letterSpacing: '0.24em',
-          textAlign: 'center', marginBottom: 16, textTransform: 'uppercase',
-        }}>
-          LORDLE
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <img
+            src={isDark ? logoDark : logoLight}
+            alt="Blahrdle"
+            height={32}
+          />
         </div>
 
         {mode === 'register' && (
