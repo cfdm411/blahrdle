@@ -36,7 +36,10 @@ const TWEAK_DEFAULTS = {
 }
 
 function estimateKeyboardHeight(vw) {
-  const keyH = Math.min(54, ((Math.min(vw, 500) - 61) / 10) * 1.42)
+  const inner = Math.min(vw, 500) - 16
+  const gap = 5
+  const unit = (inner - 9 * gap) / 10
+  const keyH = Math.min(54, unit * 1.42)
   return 16 + 24 + 3 * keyH + 10
 }
 
@@ -114,27 +117,11 @@ const Key = memo(function Key({ label, state, onPress, theme, accentCorrect, acc
     <button
       onClick={() => onPress(label)}
       aria-label={label === "ENTER" ? "Enter" : label === "⌫" ? "Borrar" : undefined}
+      className={isWide ? 'game-key game-key--wide' : 'game-key'}
       style={{
-        // fluid width/height: fills naturally on desktop (≥500 px), shrinks on mobile
-        // formula: (keyboard-container-width − h-padding−16px − row1-gaps−45px) / 10 keys
-        width: isWide
-          ? "min(62px, calc((min(100vw, 500px) - 61px) / 10 * 1.63))"
-          : "min(38px, calc((min(100vw, 500px) - 61px) / 10))",
-        height: "min(54px, calc((min(100vw, 500px) - 61px) / 10 * 1.42))",
-        padding: "0 6px",
         background: s.bg,
         color: s.color,
         border: `1.5px solid ${s.border || s.bg}`,
-        borderRadius: 6,
-        fontSize: isWide
-          ? "clamp(9px,  calc((min(100vw, 500px) - 61px) / 10 * 0.316), 12px)"
-          : "clamp(11px, calc((min(100vw, 500px) - 61px) / 10 * 0.395), 15px)",
-        fontWeight: 600,
-        fontFamily: "'Outfit', sans-serif",
-        cursor: "pointer",
-        letterSpacing: isWide ? "0.04em" : "0.05em",
-        transition: "background 0.15s, transform 0.08s",
-        flexShrink: 0,
       }}
       onMouseDown={e => { e.currentTarget.style.transform = "scale(0.93)" }}
       onMouseUp={e => { e.currentTarget.style.transform = "scale(1)" }}
@@ -694,10 +681,10 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
       {/* ── KEYBOARD ── */}
       <div className="game-keyboard-area">
         {KB_ROWS.map((row, ri) => (
-          <div key={ri} style={{
-            display: "flex", justifyContent: "center",
-            gap: 5, marginBottom: ri < 2 ? 5 : 0,
-          }}>
+          <div
+            key={ri}
+            className={`game-kb-row ${ri === 2 ? 'game-kb-row--enter' : 'game-kb-row--10'}`}
+          >
             {row.map(key => (
               <Key
                 key={key}

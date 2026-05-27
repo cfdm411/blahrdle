@@ -61,7 +61,63 @@ body.dark {
   flex-shrink: 0;
   width: 100%;
   max-width: 500px;
+  --kbd-w: 100%;
+  --kbd-gap: 5px;
   padding: 16px 8px max(24px, env(safe-area-inset-bottom, 0px));
+  overflow-x: hidden;
+}
+
+.game-kb-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--kbd-gap);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  margin-bottom: 5px;
+}
+
+.game-kb-row:last-child {
+  margin-bottom: 0;
+}
+
+.game-kb-row--10 {
+  --kbd-row-unit: calc((100% - 9 * var(--kbd-gap)) / 10);
+}
+
+.game-kb-row--enter {
+  --kbd-row-unit: calc((100% - 8 * var(--kbd-gap)) / 10.26);
+}
+
+@media (max-width: 420px) {
+  .game-kb-row--enter {
+    --kbd-gap: 4px;
+  }
+}
+
+.game-key {
+  flex: 0 1 var(--kbd-row-unit);
+  min-width: 0;
+  width: var(--kbd-row-unit);
+  max-width: var(--kbd-row-unit);
+  height: min(54px, calc(var(--kbd-row-unit) * 1.42));
+  padding: 0 6px;
+  border-radius: 6;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: background 0.15s, transform 0.08s;
+  font-size: clamp(11px, calc(var(--kbd-row-unit) * 0.395), 15px);
+}
+
+.game-key--wide {
+  flex: 0 1 calc(var(--kbd-row-unit) * 1.63);
+  width: calc(var(--kbd-row-unit) * 1.63);
+  max-width: calc(var(--kbd-row-unit) * 1.63);
+  letter-spacing: 0.04em;
+  font-size: clamp(9px, calc(var(--kbd-row-unit) * 0.316), 12px);
 }
 
 @keyframes pop {
