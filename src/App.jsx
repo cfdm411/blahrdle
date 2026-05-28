@@ -35,24 +35,28 @@ const TWEAK_DEFAULTS = {
   tileSize: 62,
 }
 
+const MIN_KEY_HEIGHT = 44
+const MIN_TILE_SIZE = 44
+
 function estimateKeyboardHeight(vw) {
   const inner = Math.min(vw, 500) - 16
   const gap = 5
   const unit = (inner - 9 * gap) / 10
-  const keyH = Math.min(54, unit * 1.42)
+  const keyH = Math.max(MIN_KEY_HEIGHT, Math.min(54, unit * 1.42))
   return 16 + 24 + 3 * keyH + 10
 }
 
 function computeEffectiveTileSize(configured, vw, vh, { isGuest, gameOver, saveError }) {
   const widthCap = Math.floor((Math.min(vw, 500) - 32 - 16) / 5)
+  const keyboardReserved = estimateKeyboardHeight(vw)
   const reserved = 92
-    + estimateKeyboardHeight(vw)
+    + keyboardReserved
     + (gameOver ? 0 : 36)
     + (isGuest ? 44 : 0)
     + (saveError ? 46 : 0)
     + 20
   const heightCap = Math.floor((vh - reserved - 20) / 6)
-  return Math.max(48, Math.min(configured, widthCap, heightCap))
+  return Math.max(MIN_TILE_SIZE, Math.min(configured, widthCap, heightCap))
 }
 
 // ─── Tile ─────────────────────────────────────────────────────────────────────
@@ -123,8 +127,6 @@ const Key = memo(function Key({ label, state, onPress, theme, accentCorrect, acc
         color: s.color,
         border: `1.5px solid ${s.border || s.bg}`,
       }}
-      onMouseDown={e => { e.currentTarget.style.transform = "scale(0.93)" }}
-      onMouseUp={e => { e.currentTarget.style.transform = "scale(1)" }}
     >
       {label}
     </button>
@@ -687,7 +689,7 @@ function Game({ auth, tweaks, setTweak, isGuest = false, match = null, onGoHome,
           >
             {row.map(key => (
               <Key
-                key={key}
+                key={`${ri}-${key}`}
                 label={key}
                 state={letterStates[key]}
                 onPress={handleKey}

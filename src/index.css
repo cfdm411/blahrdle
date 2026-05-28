@@ -65,6 +65,8 @@ body.dark {
   --kbd-gap: 5px;
   padding: 16px 8px max(24px, env(safe-area-inset-bottom, 0px));
   overflow-x: hidden;
+  isolation: isolate;
+  contain: layout style;
 }
 
 .game-kb-row {
@@ -101,7 +103,8 @@ body.dark {
   min-width: 0;
   width: var(--kbd-row-unit);
   max-width: var(--kbd-row-unit);
-  height: min(54px, calc(var(--kbd-row-unit) * 1.42));
+  height: min(54px, max(44px, calc(var(--kbd-row-unit) * 1.42)));
+  min-height: 44px;
   padding: 0 6px;
   border-radius: 6;
   font-weight: 600;
@@ -110,6 +113,12 @@ body.dark {
   letter-spacing: 0.05em;
   transition: background 0.15s, transform 0.08s;
   font-size: clamp(11px, calc(var(--kbd-row-unit) * 0.395), 15px);
+  touch-action: manipulation;
+  overflow: hidden;
+}
+
+.game-key:active {
+  transform: scale(0.93);
 }
 
 .game-key--wide {
