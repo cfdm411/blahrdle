@@ -6,7 +6,7 @@ export { TILE }
 
 export const TIMER_SECONDS = 600
 
-export function useGameState({ initialTarget = null, trackLocalScores = true } = {}) {
+export function useGameState({ initialTarget = null } = {}) {
   const [target, setTarget]             = useState(() => initialTarget || getRandomWord())
   const [guesses, setGuesses]           = useState([])
   const [currentGuess, setCurrentGuess] = useState("")
@@ -86,13 +86,12 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
     lossHandledRef.current = true
     setGameOver(true)
     showToast(msg, 3500)
-    if (!trackLocalScores) return
     setScores(prev => {
       const next = { wins: prev.wins || 0, losses: (prev.losses || 0) + 1, streak: 0 }
       localStorage.setItem("lordle_scores", JSON.stringify(next))
       return next
     })
-  }, [target, showToast, trackLocalScores])
+  }, [target, showToast])
 
   const submitGuess = useCallback(() => {
     if (gameOver || timeLeft === 0) return
@@ -133,7 +132,6 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
         setWon(true)
         setGameOver(true)
         showToast("Brilliant! 🎉", 3000)
-        if (!trackLocalScores) return
         setScores(prev => {
           const next = { wins: (prev.wins || 0) + 1, losses: prev.losses || 0, streak: (prev.streak || 0) + 1 }
           localStorage.setItem("lordle_scores", JSON.stringify(next))
@@ -144,7 +142,7 @@ export function useGameState({ initialTarget = null, trackLocalScores = true } =
       setTimerPaused(true)
       scheduleTimeout(() => triggerLoss(), 1600)
     }
-  }, [currentGuess, guesses, gameOver, timeLeft, target, showToast, triggerLoss, trackLocalScores, scheduleTimeout])
+  }, [currentGuess, guesses, gameOver, timeLeft, target, showToast, triggerLoss, scheduleTimeout])
 
   // Countdown — interval runs while game is active; cleanup when gameOver flips true
   useEffect(() => {
